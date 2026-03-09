@@ -1,25 +1,21 @@
 package com.resukisu.resukisu.ui.util
 
-import android.content.ContentResolver
-import android.content.Context
-import android.database.Cursor
 import android.net.Uri
 import android.os.Environment
 import android.os.Parcelable
 import android.os.SystemClock
-import android.provider.OpenableColumns
 import android.system.Os
 import android.util.Log
-import com.topjohnwu.superuser.CallbackList
-import com.topjohnwu.superuser.Shell
-import com.topjohnwu.superuser.ShellUtils
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.parcelize.Parcelize
 import com.resukisu.resukisu.BuildConfig
 import com.resukisu.resukisu.Natives
 import com.resukisu.resukisu.ksuApp
+import com.topjohnwu.superuser.CallbackList
+import com.topjohnwu.superuser.Shell
+import com.topjohnwu.superuser.ShellUtils
 import com.topjohnwu.superuser.io.SuFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.parcelize.Parcelize
 import org.json.JSONArray
 import java.io.File
 import java.util.Properties
@@ -51,18 +47,6 @@ inline fun <T> withNewRootShell(
     block: Shell.() -> T
 ): T {
     return createRootShell(globalMnt).use(block)
-}
-
-fun Uri.getFileName(context: Context): String? {
-    var fileName: String? = null
-    val contentResolver: ContentResolver = context.contentResolver
-    val cursor: Cursor? = contentResolver.query(this, null, null, null, null)
-    cursor?.use {
-        if (it.moveToFirst()) {
-            fileName = it.getString(it.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
-        }
-    }
-    return fileName
 }
 
 fun createRootShell(globalMnt: Boolean = false): Shell {
@@ -108,8 +92,7 @@ suspend fun getFeatureStatus(feature: String): String = withContext(Dispatchers.
 
 fun install() {
     val start = SystemClock.elapsedRealtime()
-    val magiskboot = File(ksuApp.applicationInfo.nativeLibraryDir, "libmagiskboot.so").absolutePath
-    val result = execKsud("install --magiskboot $magiskboot", true)
+    val result = execKsud("install", true)
     Log.w(TAG, "install result: $result, cost: ${SystemClock.elapsedRealtime() - start}ms")
 }
 
@@ -134,7 +117,7 @@ fun getModuleCount(): Int {
 }
 
 fun getSuperuserCount(): Int {
-    return Natives.allowList.size
+    return Natives.getSuperuserCount()
 }
 
 fun toggleModule(id: String, enable: Boolean): Boolean {
@@ -284,8 +267,7 @@ fun installBoot(
         }
     }
 
-    val magiskboot = File(ksuApp.applicationInfo.nativeLibraryDir, "libmagiskboot.so")
-    var cmd = "boot-patch --magiskboot ${magiskboot.absolutePath}"
+    var cmd = "boot-patch"
 
     cmd += if (bootFile == null) {
         // no boot.img, use -f to force install
@@ -616,26 +598,26 @@ fun getZygiskImplement(): String {
     return "None"
 }
 
-fun addUmountPath(path: String, flags: Int): Boolean {
+fun addKernelUmountPath(path: String, flags: Int): Boolean {
     val shell = getRootShell()
     val flagsArg = if (flags >= 0) "--flags $flags" else ""
-    val cmd = "${getKsuDaemonPath()} umount add $path $flagsArg"
+    val cmd = "${getKsuDaemonPath()} kernel umount add $path $flagsArg"
     val result = ShellUtils.fastCmdResult(shell, cmd)
     Log.i(TAG, "add umount path $path result: $result")
     return result
 }
 
-fun removeUmountPath(path: String): Boolean {
+fun removeKernelUmountPath(path: String): Boolean {
     val shell = getRootShell()
-    val cmd = "${getKsuDaemonPath()} umount remove $path"
+    val cmd = "${getKsuDaemonPath()} kernel umount del $path"
     val result = ShellUtils.fastCmdResult(shell, cmd)
     Log.i(TAG, "remove umount path $path result: $result")
     return result
 }
 
-fun listUmountPaths(): String {
+fun listKernelUmountPaths(): String {
     val shell = getRootShell()
-    val cmd = "${getKsuDaemonPath()} umount list"
+    val cmd = "${getKsuDaemonPath()} kernel umount list"
     return try {
         runCmd(shell, cmd).trim()
     } catch (e: Exception) {
@@ -644,26 +626,30 @@ fun listUmountPaths(): String {
     }
 }
 
-fun clearCustomUmountPaths(): Boolean {
+fun addUmountConfigUmountPath(path: String, flags: Int): Boolean {
     val shell = getRootShell()
-    val cmd = "${getKsuDaemonPath()} umount clear-custom"
+    val flagsArg = if (flags >= 0) "--flags $flags" else ""
+    val cmd = "${getKsuDaemonPath()} umount-config add $path $flagsArg"
     val result = ShellUtils.fastCmdResult(shell, cmd)
-    Log.i(TAG, "clear custom umount paths result: $result")
+    Log.i(TAG, "add umount path $path result: $result")
     return result
 }
 
-fun saveUmountConfig(): Boolean {
+fun removeUmountConfigUmountPath(path: String): Boolean {
     val shell = getRootShell()
-    val cmd = "${getKsuDaemonPath()} umount save"
+    val cmd = "${getKsuDaemonPath()} umount-config del $path"
     val result = ShellUtils.fastCmdResult(shell, cmd)
-    Log.i(TAG, "save umount config result: $result")
+    Log.i(TAG, "remove umount path $path result: $result")
     return result
 }
 
-fun applyUmountConfigToKernel(): Boolean {
+fun listUmountConfigUmountPaths(): String {
     val shell = getRootShell()
-    val cmd = "${getKsuDaemonPath()} umount apply"
-    val result = ShellUtils.fastCmdResult(shell, cmd)
-    Log.i(TAG, "apply umount config to kernel result: $result")
-    return result
+    val cmd = "${getKsuDaemonPath()} umount-config list"
+    return try {
+        runCmd(shell, cmd).trim()
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to list umount paths", e)
+        ""
+    }
 }

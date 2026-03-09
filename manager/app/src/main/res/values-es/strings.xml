@@ -14,7 +14,7 @@
     <string name="selinux_status_disabled">Desactivado</string>
     <string name="selinux_status_enforcing">Estricto</string>
     <string name="selinux_status_permissive">Permisivo</string>
-    <string name="selinux_status_unknown">Desconocido</string>
+    <string name="unknown">Desconocido</string>
     <string name="superuser">Superusuario</string>
     <string name="module_failed_to_enable">Error al activar el módulo: %s</string>
     <string name="module_failed_to_disable">Error al desactivar el módulo: %s</string>
@@ -273,8 +273,6 @@
     <string name="show_kpm_info">Mostrar función KPM</string>
     <string name="show_kpm_info_summary">Oculta la información y función del KPM en la barra de inicio e inferior</string>
     <!-- Webui X settings -->
-    <string name="use_webuix_eruda">Inyectar Eruda en WebUI X</string>
-    <string name="use_webuix_eruda_summary">Inyecta una consola de depuración en WebUI X para facilitar la depuración. Requiere que la depuración web esté encendida.</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">DPI aplicado</string>
     <string name="app_dpi_summary">Ajustar la densidad de pantalla para la aplicación actual</string>
@@ -286,8 +284,6 @@
     <string name="dpi_apply_settings">Aplicando ajustes de DPI</string>
     <string name="dpi_confirm_title">Confirmar cambio DPI</string>
     <string name="dpi_confirm_message">¿Estás seguro de que quieres cambiar el DPI de la aplicación de %1$d a %2$d?</string>
-    <string name="dpi_confirm_summary">La aplicación necesita reiniciarse para aplicar la nueva configuración DPI, no afecta a la barra de estado del sistema u otras aplicaciones</string>
-    <string name="dpi_applied_success">DPI ha sido establecido a %1$d, efectivo después de reiniciar la aplicación</string>
     <!-- Language settings related strings -->
     <string name="settings_language">Idioma de la aplicación</string>
     <string name="language_system_default">Seguir sistema</string>

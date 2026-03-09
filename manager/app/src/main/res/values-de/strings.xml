@@ -14,7 +14,7 @@
     <string name="selinux_status_disabled">Deaktiviert</string>
     <string name="selinux_status_enforcing">Erzwingen</string>
     <string name="selinux_status_permissive">Permissiv</string>
-    <string name="selinux_status_unknown">Unbekannt</string>
+    <string name="unknown">Unbekannt</string>
     <string name="superuser">Superuser</string>
     <string name="module_failed_to_enable">Modulaktivierung fehlgeschlagen: %s</string>
     <string name="module_failed_to_disable">Moduldeaktivierung fehlgeschlagen: %s</string>
@@ -275,8 +275,6 @@
     <string name="show_kpm_info">KPM-Funktion anzeigen</string>
     <string name="show_kpm_info_summary">Versteckt KPM-Informationen und Funktion in der Home- und Unterleiste</string>
     <!-- Webui X settings -->
-    <string name="use_webuix_eruda">Eruda in WebUI X injizieren</string>
-    <string name="use_webuix_eruda_summary">Fügen Sie eine Debug-Konsole in WebUI X ein, um das Debuggen zu vereinfachen. Benötigt Debugging im WebUI X.</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">Angewendeter DPI</string>
     <string name="app_dpi_summary">Bildschirmanzahl nur für die aktuelle Anwendung anpassen</string>
@@ -288,8 +286,6 @@
     <string name="dpi_apply_settings">DPI-Einstellungen anwenden</string>
     <string name="dpi_confirm_title">DPI-Änderung bestätigen</string>
     <string name="dpi_confirm_message">Sind Sie sicher, dass Sie die Anwendung DPI von %1$d auf %2$d ändern möchten?</string>
-    <string name="dpi_confirm_summary">Die Anwendung muss neu gestartet werden, um die neuen DPI-Einstellungen zu übernehmen, hat keine Auswirkungen auf die System-Statusleiste oder andere Anwendungen</string>
-    <string name="dpi_applied_success">DPI wurde auf %1$dgesetzt, wirksam nach dem Neustart der Anwendung</string>
     <!-- Language settings related strings -->
     <string name="settings_language">App Sprache</string>
     <string name="language_system_default">Folge Systemeinstellung</string>

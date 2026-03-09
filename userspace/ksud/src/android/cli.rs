@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use android_logger::Config;
 use anyhow::{Context, Ok, Result};
 use clap::Parser;
@@ -11,7 +9,7 @@ use crate::{
     android::{
         debug, dynamic_manager, feature, init_event, ksucalls,
         module::{self, module_config},
-        profile, sepolicy, su, umount, utils,
+        profile, sepolicy, su, umount_config, utils,
     },
     apk_sign, assets,
     boot_patch::{BootPatchArgs, BootRestoreArgs},
@@ -44,24 +42,23 @@ enum Commands {
     BootCompleted,
 
     #[cfg(all(target_arch = "aarch64", target_os = "android"))]
-    /// Susfs
+    /// Manage susfs component
     Susfs {
         #[command(subcommand)]
         command: Susfs,
     },
 
-    /// Install KernelSU userspace component to system
-    Install {
-        #[arg(long, default_value = None)]
-        magiskboot: Option<PathBuf>,
+    /// Manage auto apply user custom umount configs
+    UmountConfig {
+        #[command(subcommand)]
+        command: UmountConfigOp,
     },
 
+    /// Install KernelSU userspace component to system
+    Install,
+
     /// Uninstall KernelSU modules and itself(LKM Only)
-    Uninstall {
-        /// magiskboot path, if not specified, will search from $PATH
-        #[arg(long, default_value = None)]
-        magiskboot: Option<PathBuf>,
-    },
+    Uninstall,
 
     /// SELinux policy Patch tool
     Sepolicy {
@@ -100,12 +97,6 @@ enum Commands {
         command: kpm_cmd::Kpm,
     },
 
-    /// Manage kernel umount paths
-    Umount {
-        #[command(subcommand)]
-        command: Umount,
-    },
-
     /// For developers
     Debug {
         #[command(subcommand)]
@@ -116,6 +107,27 @@ enum Commands {
         #[command(subcommand)]
         command: Kernel,
     },
+}
+
+#[derive(clap::Subcommand, Debug)]
+enum UmountConfigOp {
+    /// Add an new umount config to configuration file
+    Add {
+        /// mount point path
+        mnt: String,
+        /// umount flags (default: 0, MNT_DETACH: 2)
+        #[arg(short, long, default_value = "0")]
+        flags: u32,
+    },
+    /// Delete an umount config from configuration file
+    Del {
+        /// mount point path
+        mnt: String,
+    },
+    /// Clear all auto apply umount config from configuration file
+    Clear,
+    /// List all configured auto apply umount configuration
+    List,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -148,7 +160,7 @@ enum Debug {
     /// Set the manager app, kernel CONFIG_KSU_DEBUG should be enabled.
     SetManager {
         /// manager package name
-        #[arg(default_value_t = String::from("com.sukisu.ultra"))]
+        #[arg(default_value_t = String::from("com.resukisu.resukisu"))]
         apk: String,
     },
 
@@ -262,15 +274,6 @@ enum Module {
     Action {
         // module id
         id: String,
-    },
-
-    /// module lua runner
-    #[cfg(all(target_os = "android", target_arch = "aarch64"))]
-    Lua {
-        // module id
-        id: String,
-        // lua function
-        function: String,
     },
 
     /// list all modules
@@ -417,32 +420,6 @@ enum Kernel {
     /// Notify that module is mounted
     NotifyModuleMounted,
 }
-
-#[derive(clap::Subcommand, Debug)]
-enum Umount {
-    /// Add mount point to umount list
-    Add {
-        /// mount point path
-        mnt: String,
-        /// umount flags (default: 0, MNT_DETACH: 2)
-        #[arg(short, long, default_value = "0")]
-        flags: u32,
-    },
-    /// Remove mount point from umount list
-    Remove {
-        /// mount point path
-        mnt: String,
-    },
-    /// List all mount points in umount list
-    List,
-    /// Save current umount list to file
-    Save,
-    /// Apply saved umount list from file to kernel
-    Apply,
-    /// Clear custom umount paths (wipe kernel list)
-    ClearCustom,
-}
-
 #[derive(clap::Subcommand, Debug)]
 enum DynamicManagerOp {
     /// Get the signature of the current dynamic manager (size+hash)
@@ -481,6 +458,8 @@ enum UmountOp {
     },
     /// Wipe all entries from umount list
     Wipe,
+    /// List all entries from umount list
+    List,
 }
 
 #[cfg(all(target_arch = "aarch64", target_os = "android"))]
@@ -553,6 +532,12 @@ pub fn run() -> Result<()> {
             }
             Ok(())
         }
+        Commands::UmountConfig { command } => match command {
+            UmountConfigOp::Add { mnt, flags } => umount_config::add_umount(&mnt, flags),
+            UmountConfigOp::Del { mnt } => umount_config::del_umount(&mnt),
+            UmountConfigOp::Clear => umount_config::wipe_umount(),
+            UmountConfigOp::List => umount_config::list_umount(),
+        },
         Commands::Module { command } => {
             utils::switch_mnt_ns(1)?;
             match command {
@@ -562,10 +547,6 @@ pub fn run() -> Result<()> {
                 Module::Enable { id } => module::enable_module(&id),
                 Module::Disable { id } => module::disable_module(&id),
                 Module::Action { id } => module::run_action(&id),
-                #[cfg(all(target_os = "android", target_arch = "aarch64"))]
-                Module::Lua { id, function } => {
-                    module::run_lua(&id, &function, false, true).map_err(|e| anyhow::anyhow!("{e}"))
-                }
                 Module::List => module::list_modules(),
                 Module::Config { command } => {
                     // Get module ID from environment variable
@@ -654,8 +635,8 @@ pub fn run() -> Result<()> {
                 }
             }
         }
-        Commands::Install { magiskboot } => utils::install(magiskboot),
-        Commands::Uninstall { magiskboot } => utils::uninstall(magiskboot),
+        Commands::Install => utils::install(),
+        Commands::Uninstall => utils::uninstall(),
         Commands::Sepolicy { command } => match command {
             Sepolicy::Patch { sepolicy } => sepolicy::live_patch(&sepolicy),
             Sepolicy::Apply { file } => sepolicy::apply_file(file),
@@ -750,24 +731,17 @@ pub fn run() -> Result<()> {
             }
         },
         Commands::BootRestore(boot_restore) => crate::boot_patch::restore(boot_restore),
-        Commands::Umount { command } => match command {
-            Umount::Add { mnt, flags } => ksucalls::umount_list_add(&mnt, flags),
-            Umount::Remove { mnt } => umount::remove_umount_entry_from_config(&mnt),
-            Umount::List => {
-                let list = ksucalls::umount_list_list()?;
-                print!("{list}");
-                Ok(())
-            }
-            Umount::Save => umount::save_umount_config(),
-            Umount::Apply => umount::apply_umount_config(),
-            Umount::ClearCustom => umount::clear_umount_config(),
-        },
         Commands::Kernel { command } => match command {
             Kernel::NukeExt4Sysfs { mnt } => ksucalls::nuke_ext4_sysfs(&mnt),
             Kernel::Umount { command } => match command {
                 UmountOp::Add { mnt, flags } => ksucalls::umount_list_add(&mnt, flags),
                 UmountOp::Del { mnt } => ksucalls::umount_list_del(&mnt),
                 UmountOp::Wipe => ksucalls::umount_list_wipe().map_err(Into::into),
+                UmountOp::List => {
+                    let list = ksucalls::umount_list_list()?;
+                    println!("{}", serde_json::to_string(&list)?);
+                    Ok(())
+                }
             },
             Kernel::DynamicManager { command } => match command {
                 DynamicManagerOp::Set { size, hash } => dynamic_manager::set(size, hash),

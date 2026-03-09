@@ -76,13 +76,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.resukisu.resukisu.Natives
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ui.MainActivity
+import com.resukisu.resukisu.ui.component.ConfirmResult
 import com.resukisu.resukisu.ui.component.ksuIsValid
+import com.resukisu.resukisu.ui.component.rememberConfirmDialog
 import com.resukisu.resukisu.ui.component.settings.AppBackButton
 import com.resukisu.resukisu.ui.component.settings.SettingsBaseWidget
 import com.resukisu.resukisu.ui.component.settings.SettingsDropdownWidget
@@ -90,6 +89,7 @@ import com.resukisu.resukisu.ui.component.settings.SettingsJumpPageWidget
 import com.resukisu.resukisu.ui.component.settings.SettingsSwitchWidget
 import com.resukisu.resukisu.ui.component.settings.SplicedColumnGroup
 import com.resukisu.resukisu.ui.component.settings.SplicedGroupScope
+import com.resukisu.resukisu.ui.navigation.LocalNavigator
 import com.resukisu.resukisu.ui.theme.CardConfig
 import com.resukisu.resukisu.ui.theme.ThemeColors
 import com.resukisu.resukisu.ui.theme.ThemeConfig
@@ -111,11 +111,8 @@ import kotlin.math.roundToInt
 
 @SuppressLint("LocalContextConfigurationRead", "LocalContextResourcesRead", "ObsoleteSdkInt")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Destination<RootGraph>
 @Composable
-fun MoreSettingsScreen(
-    navigator: DestinationsNavigator
-) {
+fun MoreSettingsScreen() {
     // 顶部滚动行为
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
@@ -225,6 +222,12 @@ fun MoreSettingsScreen(
     }
     else Modifier
 
+    val navigator = LocalNavigator.current
+
+    LaunchedEffect(Unit) {
+        scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -238,7 +241,7 @@ fun MoreSettingsScreen(
                 navigationIcon = {
                     AppBackButton(
                         onClick = {
-                            navigator.popBackStack()
+                            navigator.pop()
                         }
                     )
                 },
@@ -350,7 +353,7 @@ private fun AppearanceSettings(
 
         item {
             // DPI 设置
-            DpiSettings(state = state, handlers = handlers)
+            DpiSettings(state = state, handlers = handlers, coroutineScope = coroutineScope)
         }
 
         item {
@@ -599,7 +602,8 @@ private fun ThemeColorSelection(state: MoreSettingsState) {
 @Composable
 private fun DpiSettings(
     state: MoreSettingsState,
-    handlers: MoreSettingsHandlers
+    handlers: MoreSettingsHandlers,
+    coroutineScope: CoroutineScope
 ) {
     SettingsBaseWidget(
         icon = Icons.Default.FormatSize,
@@ -615,14 +619,22 @@ private fun DpiSettings(
     }
 
     // DPI 滑动条和控制
-    DpiSliderControls(state = state, handlers = handlers)
+    DpiSliderControls(state = state, handlers = handlers, coroutineScope = coroutineScope)
 }
 
 @Composable
 private fun DpiSliderControls(
     state: MoreSettingsState,
-    handlers: MoreSettingsHandlers
+    handlers: MoreSettingsHandlers,
+    coroutineScope: CoroutineScope
 ) {
+    val confirmDialog = rememberConfirmDialog()
+    val dpiConfirmTitle = stringResource(R.string.dpi_confirm_title)
+    val dpiConfirmMessage =
+        stringResource(R.string.dpi_confirm_message, state.currentDpi, state.tempDpi)
+    val confirmText = stringResource(R.string.confirm)
+    val cancelText = stringResource(R.string.cancel)
+
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         val sliderValue by animateFloatAsState(
             targetValue = state.tempDpi.toFloat(),
@@ -694,7 +706,20 @@ private fun DpiSliderControls(
         )
 
         Button(
-            onClick = { state.showDpiConfirmDialog = true },
+            onClick = {
+                coroutineScope.launch {
+                    val confirmResult = confirmDialog.awaitConfirm(
+                        title = dpiConfirmTitle,
+                        content = dpiConfirmMessage,
+                        confirm = confirmText,
+                        dismiss = cancelText
+                    )
+
+                    if (confirmResult != ConfirmResult.Confirmed) return@launch
+
+                    handlers.handleDpiApply()
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
@@ -872,6 +897,7 @@ private fun DimSlider(
 private fun LanguageSetting(state: MoreSettingsState) {
     val context = LocalContext.current
     val language = stringResource(id = R.string.settings_language)
+    val languageSystemDefault = stringResource(R.string.language_system_default)
 
     // Compute display name based on current app locale
     val currentLanguageDisplay = remember(state.currentAppLocale) {
@@ -879,7 +905,7 @@ private fun LanguageSetting(state: MoreSettingsState) {
         if (locale != null) {
             locale.getDisplayName(locale)
         } else {
-            context.getString(R.string.language_system_default)
+            languageSystemDefault
         }
     }
 

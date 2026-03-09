@@ -1,6 +1,7 @@
 #[cfg(target_os = "android")]
 mod android {
     use const_format::concatcp;
+    use serde::Serialize;
 
     pub const ADB_DIR: &str = "/data/adb/";
     pub const WORKING_DIR: &str = concatcp!(ADB_DIR, "ksu/");
@@ -13,7 +14,6 @@ mod android {
 
     pub const KSURC_PATH: &str = concatcp!(WORKING_DIR, ".ksurc");
     pub const DAEMON_PATH: &str = concatcp!(ADB_DIR, "ksud");
-    pub const MAGISKBOOT_PATH: &str = concatcp!(BINARY_DIR, "magiskboot");
 
     pub const DAEMON_LINK_PATH: &str = concatcp!(BINARY_DIR, "ksud");
 
@@ -36,6 +36,10 @@ mod android {
     pub const METAMODULE_MOUNT_SCRIPT: &str = "metamount.sh";
     pub const METAMODULE_METAINSTALL_SCRIPT: &str = "metainstall.sh";
     pub const METAMODULE_METAUNINSTALL_SCRIPT: &str = "metauninstall.sh";
+    pub const METAMODULE_MOUNT_SCRIPT_LOG: &str = concatcp!(LOG_DIR, "metamodule_mount");
+    pub const METAMODULE_METAUNINSTALL_SCRIPT_LOG: &str =
+        concatcp!(LOG_DIR, "metamodule_metauninstall");
+    pub const METAMODULE_DEBUG: &str = concatcp!(WORKING_DIR, "metamodule.debug");
 
     pub const KSU_BACKUP_DIR: &str = WORKING_DIR;
     pub const KSU_BACKUP_FILE_PREFIX: &str = "ksu_backup_";
@@ -43,6 +47,12 @@ mod android {
     pub const UMOUNT_CONFIG_PATH: &str = concatcp!(WORKING_DIR, ".umount");
 
     pub const DYNAMIC_MANAGER: &str = concatcp!(WORKING_DIR, ".dynamic_manager");
+
+    #[derive(Serialize)]
+    pub struct MountInfo {
+        pub path: String,
+        pub flags: u32,
+    }
 }
 
 pub const VERSION_CODE: &str = include_str!(concat!(env!("OUT_DIR"), "/VERSION_CODE"));

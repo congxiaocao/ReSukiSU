@@ -16,7 +16,7 @@
     <string name="selinux_status_disabled">Disabled</string>
     <string name="selinux_status_enforcing">Enforcing</string>
     <string name="selinux_status_permissive">Permissive</string>
-    <string name="selinux_status_unknown">Unknown</string>
+    <string name="unknown">Unknown</string>
     <string name="superuser">Superuser</string>
     <string name="module_failed_to_enable">Failed to enable module: %s</string>
     <string name="module_failed_to_disable">Failed to disable module: %s</string>
@@ -37,6 +37,16 @@
     <string name="reboot_download">Reboot to Download</string>
     <string name="reboot_edl">Reboot to EDL</string>
     <string name="about">About</string>
+    <string name="about_anime_character_sticker"><![CDATA[The images of the files with anime character sticker are copyrighted by %1$s, the Brand Intellectual Property in the images is owned by %2$s. Before using these files, in addition to complying with %3$s, you also need to comply with the authorization of the two authors to use these artistic contents.]]></string>
+    <string name="get_source_code">Check for source code</string>
+    <string name="get_source_code_detail">Check for source code on GitHub</string>
+    <string name="join_telegram_group">Join community</string>
+    <string name="join_telegram_group_detail">Join our Telegram channel</string>
+    <string name="open_source_license">Open Source License</string>
+    <string name="open_source_license_settings_description">View third-party open-source libraries and their licenses</string>
+    <string name="visit_home_page">Visit Home Page</string>
+    <string name="license">License: %s</string>
+    <string name="no_license_text">No license text available.</string>
     <string name="module_uninstall_confirm">Are you sure you want to uninstall module %s?</string>
     <string name="metamodule_uninstall_confirm">Are you sure you want to uninstall module %s? This action will affect all modules, and certain features provided by the metamodule (such as mounting) will no longer work</string>
     <string name="module_uninstall_success">%s uninstalled</string>
@@ -311,16 +321,9 @@
     <!-- Webui settings -->
     <string name="module_webui_alert">Message from Module %s</string>
     <string name="no_such_module">Module %s does not exist</string>
-    <string name="module_unavailable">Module %s is disabled, updating, or pending removal</string>
+    <string name="module_unavailable">Module %s is disabled, or pending removal</string>
     <string name="select_default_webui_engine">Default WebUI engine</string>
     <string name="select_webui_engine_description">Select global default webui engine</string>
-    <string name="webui_engine_default">Follow default settings</string>
-    <string name="webui_engine_webuix" translatable="false">WebUI X</string>
-    <string name="webui_engine_ksu" translatable="false">KSU WebUI</string>
-    <string name="use_webuix_eruda">Inject Eruda into WebUI X</string>
-    <string name="use_webuix_eruda_summary">Inject a debug console into WebUI X to make debugging easier. Requires web debugging to be on</string>
-    <string name="config_modules_webui">Config modules webui engine</string>
-    <string name="config_modules_webui_description">"Specially config modules\'s webui engine"</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">Applied DPI</string>
     <string name="app_dpi_summary">Adjust the screen display density for the current application only</string>
@@ -332,8 +335,7 @@
     <string name="dpi_apply_settings">Apply DPI settings</string>
     <string name="dpi_confirm_title">Confirm DPI change</string>
     <string name="dpi_confirm_message">Are you sure you want to change the application DPI from %1$d to %2$d?</string>
-    <string name="dpi_confirm_summary">Application needs to be restarted to apply the new DPI settings, does not affect the system status bar or other applications</string>
-    <string name="dpi_applied_success">DPI has been set to %1$d, effective after restarting the application</string>
+    <string name="dpi_applied_success">DPI has been set to %1$d</string>
     <!-- Language settings related strings -->
     <string name="settings_language">App Language</string>
     <string name="language_system_default">Follow System</string>
@@ -363,6 +365,8 @@
     <!-- 状态相关 -->
     <string name="no_apps_in_category">No application in this category</string>
     <!-- 标签相关 -->
+    <string name="persistent">Persistent</string>
+    <string name="temporary">Temporary</string>
     <string name="deny_authorization">Delegation of authority</string>
     <string name="grant_authorization">Authorizations</string>
     <string name="unmount_modules">Unmounting Module Mounts</string>
@@ -708,25 +712,21 @@ Important Note:\n
     </string>
     <string name="umount_path_manager">Umount Path Management</string>
     <string name="umount_path_manager_summary">Manage kernel unmount paths</string>
-    <string name="umount_path_restart_notice">A reboot is required for changes to take effect. The system will apply the new configuration on the next boot</string>
     <string name="no_any_umount_path">Not have any umount path</string>
     <string name="add_umount_path">Add Umount Path</string>
     <string name="mount_path">Mount Path</string>
     <string name="umount_flags">Unmount Flags</string>
     <string name="umount_flags_hint">0=Normal unmount, 2=MNT_DETACH</string>
-    <string name="flags">Flags</string>
     <string name="confirm_delete">Confirm Delete</string>
     <string name="confirm_delete_umount_path">Are you sure you want to delete the path %s?</string>
-    <string name="umount_path_added">Path added, will take effect after reboot</string>
-    <string name="umount_path_removed">Path removed, will take effect after reboot</string>
+    <string name="umount_path_added">Umount path added</string>
+    <string name="umount_path_removed">Umount path removed</string>
     <string name="operation_failed">Operation failed</string>
     <string name="confirm_action">Confirm Action</string>
     <string name="confirm_clear_custom_paths">Are you sure you want to clear all custom paths? (default paths will be preserved)</string>
     <string name="custom_paths_cleared">Custom paths cleared</string>
-    <string name="clear_custom_paths">Clear Custom Paths</string>
-    <string name="apply_config">Apply Configuration</string>
+    <string name="changes_take_effect_immediately">All changes will take effect immediately.</string>
     <string name="config_applied">Configuration applied to kernel</string>
-    <string name="mnt_detach">MNT_DETACH</string>
     <string name="group_contains_apps">Contains %d apps</string>
     <string name="meta_module_disabled">module not mounted, because metamodule disabled</string>
     <string name="meta_module_removed">module not mounted, because metamodule being delete</string>

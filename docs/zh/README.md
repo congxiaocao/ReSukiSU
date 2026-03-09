@@ -1,5 +1,5 @@
 # ReSukiSU
-<img align='right' src='SukiSU-mini.svg' width='220px' alt="sukisu logo">
+<img align='right' src='ReSukiSU_blue.svg' width='220px' alt="ReSukiSU Icon">
 
 
 [English](../README.md) | **简体中文** | [日本語](../ja/README.md) | [Türkçe](../tr/README.md) | [Русский](../ru/README.md)
@@ -33,13 +33,11 @@
 
 ## 集成
 
-```sh
-curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
-```
+请参考[文档](https://ReSukiSU.github.io)
 
 ## 参与翻译
 
-要将 SukiSU 翻译成您的语言，或完善现有的翻译，请使用 [Crowdin](https://crowdin.com/project/ReSukiSU).
+要将 ReSukiSU 翻译成您的语言，或完善现有的翻译，请使用 [Crowdin](https://crowdin.com/project/ReSukiSU).
 
 ## KPM 支持
 

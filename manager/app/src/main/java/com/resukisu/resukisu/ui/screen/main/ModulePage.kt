@@ -85,10 +85,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -125,11 +127,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kyant.capsule.ContinuousRoundedRectangle
-import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.ModuleRepoScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import com.resukisu.resukisu.Natives
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ksuApp
@@ -140,13 +137,14 @@ import com.resukisu.resukisu.ui.component.WarningCard
 import com.resukisu.resukisu.ui.component.ZipFileDetector.parseModuleInfo
 import com.resukisu.resukisu.ui.component.ZipFileInfo
 import com.resukisu.resukisu.ui.component.ZipType
-import com.resukisu.resukisu.ui.component.pinnedScrollBehavior
 import com.resukisu.resukisu.ui.component.rememberConfirmDialog
 import com.resukisu.resukisu.ui.component.rememberLoadingDialog
 import com.resukisu.resukisu.ui.component.settings.SettingsBaseWidget
 import com.resukisu.resukisu.ui.component.settings.SettingsJumpPageWidget
 import com.resukisu.resukisu.ui.component.settings.SettingsTextFieldWidget
 import com.resukisu.resukisu.ui.component.settings.SplicedColumnGroup
+import com.resukisu.resukisu.ui.navigation.LocalNavigator
+import com.resukisu.resukisu.ui.navigation.Route
 import com.resukisu.resukisu.ui.screen.FlashIt
 import com.resukisu.resukisu.ui.screen.LabelText
 import com.resukisu.resukisu.ui.theme.getCardColors
@@ -163,7 +161,6 @@ import com.resukisu.resukisu.ui.util.undoUninstallModule
 import com.resukisu.resukisu.ui.util.uninstallModule
 import com.resukisu.resukisu.ui.viewmodel.ModuleViewModel
 import com.resukisu.resukisu.ui.webui.WebUIActivity
-import com.resukisu.resukisu.ui.webui.WebUIXActivity
 import com.topjohnwu.superuser.io.SuFile
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -183,7 +180,8 @@ private enum class ShortcutType {
 @SuppressLint("ResourceType", "AutoboxingStateCreation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: HazeState?) {
+fun ModulePage(bottomPadding: Dp, hazeState: HazeState?) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel<ModuleViewModel>(
         viewModelStoreOwner = ksuApp
@@ -206,8 +204,8 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
         zipFiles = pendingZipFiles,
         onConfirm = { info ->
             showConfirmationDialog = false
-            navigator.navigate(
-                FlashScreenDestination(
+            navigator.push(
+                Route.Flash(
                     FlashIt.FlashModules(ArrayList(info.filter { it.type == ZipType.MODULE }.map { it.uri }))
                 )
             )
@@ -287,6 +285,7 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
     }
 
     LaunchedEffect(Unit) {
+        viewModel.search = ""
         if (viewModel.moduleList.isEmpty() || viewModel.isNeedRefresh) {
             viewModel.sortEnabledFirst = prefs.getBoolean("module_sort_enabled_first", false)
             viewModel.sortActionFirst = prefs.getBoolean("module_sort_action_first", false)
@@ -298,30 +297,34 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
     val hasMagisk = hasMagisk()
     val hideInstallButton = isSafeMode || hasMagisk
 
-    val scrollBehavior = pinnedScrollBehavior()
+    val topAppBarState = rememberTopAppBarState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
 
     Scaffold(
         topBar = {
             SearchAppBar(
+                title = stringResource(R.string.module),
                 searchText = viewModel.search,
                 onSearchTextChange = { viewModel.search = it },
                 dropdownContent = {
-                    IconButton(
-                        onClick = {
-                            navigator.navigate(ModuleRepoScreenDestination)
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Cloud,
-                            contentDescription = stringResource(id = R.string.module_repo),
-                        )
-                    }
                     IconButton(
                         onClick = { showBottomSheet = true },
                     ) {
                         Icon(
                             imageVector = Icons.Filled.MoreVert,
                             contentDescription = stringResource(id = R.string.settings),
+                        )
+                    }
+                },
+                navigationContent = {
+                    IconButton(
+                        onClick = {
+                            navigator.push(Route.ModuleRepo)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Cloud,
+                            contentDescription = stringResource(id = R.string.module_repo),
                         )
                     }
                 },
@@ -334,7 +337,7 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
             if (hideInstallButton) return@Scaffold
 
             FloatingActionButton(
-                modifier = Modifier.padding(bottom = bottomPadding),
+                modifier = Modifier.padding(bottom = bottomPadding + 5.dp),
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 containerColor = MaterialTheme.colorScheme.primary,
                 onClick = {
@@ -391,17 +394,42 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
                     }
                 }
             }
+            viewModel.moduleList.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Extension,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(96.dp)
+                                .padding(bottom = 16.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.module_empty),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+            }
             else -> {
                 ModuleList(
-                    navigator = navigator,
                     viewModel = viewModel,
                     listState = listState,
                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
                     onInstallModule = {
-                        navigator.navigate(FlashScreenDestination(FlashIt.FlashModule(it)))
+                        navigator.push(Route.Flash(FlashIt.FlashModule(it)))
                     },
                     onUpdateModule = {
-                        navigator.navigate(FlashScreenDestination(FlashIt.FlashModuleUpdate(it)))
+                        navigator.push(Route.Flash(FlashIt.FlashModuleUpdate(it)))
                     },
                     onClickModule = { id, name, hasWebUi ->
                         val currentTime = System.currentTimeMillis()
@@ -413,42 +441,12 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
 
                         if (hasWebUi) {
                             try {
-                                val webuixEngine = Intent(context, WebUIXActivity::class.java)
-                                    .setData("kernelsu://webuix/$id".toUri())
-                                    .putExtra("id", id)
-                                    .putExtra("name", name)
-
-                                val ksuEngine = Intent(context, WebUIActivity::class.java)
+                                context.startActivity(
+                                    Intent(context, WebUIActivity::class.java)
                                     .setData("kernelsu://webui/$id".toUri())
                                     .putExtra("id", id)
-                                    .putExtra("name", name)
-
-                                val moduleSettings =
-                                    context.getSharedPreferences("module_settings", MODE_PRIVATE)
-                                val moduleEngine =
-                                    moduleSettings.getString(id + "_webui", "default") ?: "default"
-
-                                var defaultEngine =
-                                    prefs.getString("webui_engine", "custom") ?: "custom"
-
-                                if (defaultEngine == "default" || defaultEngine == "wx") { // 旧版兼容
-                                    prefs.edit(commit = true) {
-                                        putString("webui_engine", "webuix")
-                                    }
-                                    defaultEngine = "webuix"
-                                }
-
-                                val selectedEngine =
-                                    when (moduleEngine) { // 优先处理模块独立设置，如果为默认，则使用全局设置，参见ModuleWebUIEngineScreen
-                                        "webuix" -> webuixEngine
-                                    "ksu" -> ksuEngine
-                                        else -> when (defaultEngine) {
-                                            "webuix" -> webuixEngine
-                                            "ksu" -> ksuEngine
-                                            else -> ksuEngine
-                                        }
-                                }
-                                context.startActivity(selectedEngine)
+                                        .putExtra("name", name)
+                                )
                             } catch (e: Exception) {
                                 Log.e("ModuleScreen", "Error launching WebUI: ${e.message}", e)
                                 scope.launch {
@@ -460,7 +458,7 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
                     },
                     context = context,
                     snackBarHost = snackBarHost,
-                    bottomPadding = bottomPadding,
+                    bottomPadding = bottomPadding + innerPadding.calculateBottomPadding(),
                     topPadding = innerPadding.calculateTopPadding(),
                     hazeState = hazeState
                 )
@@ -666,7 +664,6 @@ private fun MetaModuleWarningCard(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ModuleList(
-    navigator: DestinationsNavigator,
     viewModel: ModuleViewModel,
     listState: LazyListState,
     modifier: Modifier = Modifier,
@@ -974,13 +971,12 @@ private fun ModuleList(
         LazyColumn(
             state = listState,
             modifier = modifier,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = remember {
                 PaddingValues(
                     start = 16.dp,
-                    top = 16.dp,
+                    top = 0.dp,
                     end = 16.dp,
-                    bottom = 65.dp
+                    bottom = 72.dp + 5.dp + 5.dp // FAB + bottom padding of FAB
                 )
             },
         ) {
@@ -993,103 +989,71 @@ private fun ModuleList(
                     key = "warning"
                 ) {
                     MetaModuleWarningCard(metaModuleWarningText!!)
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
 
-            when {
-                viewModel.moduleList.isEmpty() -> {
-                    item {
-                        Box(
-                            modifier = Modifier.fillParentMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Extension,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                                    modifier = Modifier
-                                        .size(96.dp)
-                                        .padding(bottom = 16.dp)
-                                )
-                                Text(
-                                    text = stringResource(R.string.module_empty),
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.bodyLarge,
+            items(
+                items = viewModel.moduleList,
+                key = { "module-$it.id" }
+            ) { module ->
+                ModuleItem(
+                    viewModel = viewModel,
+                    module = module,
+                    updateUrl = module.moduleUpdate?.zipUrl.orEmpty(),
+                    onUninstallClicked = {
+                        viewModel.viewModelScope.launch {
+                            withContext(Dispatchers.IO) {
+                                onModuleUninstallClicked(module)
+                            }
+                        }
+                    },
+                    onCheckChanged = {
+                        viewModel.viewModelScope.launch {
+                            withContext(Dispatchers.IO) {
+                                val success = withContext(Dispatchers.IO) {
+                                    toggleModule(module.dirId, !module.enabled)
+                                }
+                                if (success) {
+                                    viewModel.fetchModuleList()
+
+                                    val result = snackBarHost.showSnackbar(
+                                        message = rebootToApply,
+                                        actionLabel = reboot,
+                                        duration = SnackbarDuration.Long
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        reboot()
+                                    }
+                                } else {
+                                    val message =
+                                        if (module.enabled) failedDisable else failedEnable
+                                    snackBarHost.showSnackbar(message.format(module.name))
+                                }
+                            }
+                        }
+                    },
+                    onUpdate = {
+                        viewModel.viewModelScope.launch {
+                            withContext(Dispatchers.IO) {
+                                onModuleUpdate(
+                                    module,
+                                    module.moduleUpdate!!.changelog,
+                                    module.moduleUpdate.zipUrl,
+                                    "${module.name}-${module.moduleUpdate.version}.zip"
                                 )
                             }
                         }
+                    },
+                    onClick = {
+                        onClickModule(it.dirId, it.name, it.hasWebUi)
+                    },
+                    onModuleAddShortcut = {
+                        onModuleAddShortcut(it)
                     }
-                }
+                )
 
-                else -> {
-                    items(
-                        items = viewModel.moduleList,
-                        key = { "module-$it.id" }
-                    ) { module ->
-                        ModuleItem(
-                            viewModel = viewModel,
-                            navigator = navigator,
-                            module = module,
-                            updateUrl = module.moduleUpdate?.zipUrl.orEmpty(),
-                            onUninstallClicked = {
-                                viewModel.viewModelScope.launch {
-                                    withContext(Dispatchers.IO) {
-                                        onModuleUninstallClicked(module)
-                                    }
-                                }
-                            },
-                            onCheckChanged = {
-                                viewModel.viewModelScope.launch {
-                                    withContext(Dispatchers.IO) {
-                                        val success = withContext(Dispatchers.IO) {
-                                            toggleModule(module.dirId, !module.enabled)
-                                        }
-                                        if (success) {
-                                            viewModel.fetchModuleList()
-
-                                            val result = snackBarHost.showSnackbar(
-                                                message = rebootToApply,
-                                                actionLabel = reboot,
-                                                duration = SnackbarDuration.Long
-                                            )
-                                            if (result == SnackbarResult.ActionPerformed) {
-                                                reboot()
-                                            }
-                                        } else {
-                                            val message =
-                                                if (module.enabled) failedDisable else failedEnable
-                                            snackBarHost.showSnackbar(message.format(module.name))
-                                        }
-                                    }
-                                }
-                            },
-                            onUpdate = {
-                                viewModel.viewModelScope.launch {
-                                    withContext(Dispatchers.IO) {
-                                        onModuleUpdate(
-                                            module,
-                                            module.moduleUpdate!!.changelog,
-                                            module.moduleUpdate.zipUrl,
-                                            "${module.name}-${module.moduleUpdate.version}.zip"
-                                        )
-                                    }
-                                }
-                            },
-                            onClick = {
-                                onClickModule(it.dirId, it.name, it.hasWebUi)
-                            },
-                            onModuleAddShortcut = {
-                                onModuleAddShortcut(it)
-                            }
-                        )
-
-                        Spacer(Modifier.height(1.dp))
-                    }
-                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             item {
@@ -1301,7 +1265,6 @@ private fun ModuleList(
 @Composable
 fun ModuleItem(
     viewModel: ModuleViewModel,
-    navigator: DestinationsNavigator,
     module: ModuleViewModel.ModuleInfo,
     updateUrl: String,
     onUninstallClicked: (ModuleViewModel.ModuleInfo) -> Unit,
@@ -1310,6 +1273,7 @@ fun ModuleItem(
     onClick: (ModuleViewModel.ModuleInfo) -> Unit,
     onModuleAddShortcut: (ModuleViewModel.ModuleInfo) -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", MODE_PRIVATE)
     val isHideTagRow = prefs.getBoolean("is_hide_tag_row", false)
@@ -1521,7 +1485,7 @@ fun ModuleItem(
                         modifier = Modifier.defaultMinSize(minWidth = 52.dp, minHeight = 32.dp),
                         enabled = !module.remove && module.enabled,
                         onClick = {
-                            navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
+                            navigator.push(Route.ExecuteModuleAction(module.dirId))
                             viewModel.markNeedRefresh()
                         },
                         contentPadding = ButtonDefaults.TextButtonContentPadding,
@@ -1618,7 +1582,6 @@ fun ModuleItemPreview() {
     )
     ModuleItem(
         viewModel<ModuleViewModel>(),
-        EmptyDestinationsNavigator,
         module,
         "",
         {},

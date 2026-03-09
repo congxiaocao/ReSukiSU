@@ -1,5 +1,5 @@
 # ReSukiSU
-<img align='right' src='SukiSU-mini.svg' width='220px' alt="sukisu logo">
+<img align='right' src='ReSukiSU_blue.svg' width='220px' alt="ReSukiSU Icon">
 
 
 **English** | [简体中文](./zh/README.md)
@@ -33,9 +33,7 @@ A based-on [`SukiSU-Ultra/SukiSU-Ultra`](https://github.com/SukiSU-Ultra/SukiSU-
 
 ## Integration
 
-```sh
-curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
-```
+See the [documentation](https://ReSukiSU.github.io).
 
 ## Translation
 

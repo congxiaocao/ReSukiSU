@@ -14,7 +14,7 @@
     <string name="selinux_status_disabled">Вимкнено</string>
     <string name="selinux_status_enforcing">Примусовий</string>
     <string name="selinux_status_permissive">Дозвільний</string>
-    <string name="selinux_status_unknown">Невідомо</string>
+    <string name="unknown">Невідомо</string>
     <string name="superuser">Суперкористувач</string>
     <string name="module_failed_to_enable">Не вдалося ввімкнути модуль: %s</string>
     <string name="module_failed_to_disable">Не вдалося вимкнути модуль: %s</string>
@@ -280,8 +280,6 @@
     <string name="show_kpm_info">Приховати функцію KPM</string>
     <string name="show_kpm_info_summary">Приховує інформацію та функцію KPM на головному екрані та в нижній панелі</string>
     <!-- Webui X settings -->
-    <string name="use_webuix_eruda">Впровадити Eruda у WebUI X</string>
-    <string name="use_webuix_eruda_summary">Впровадити консоль налагодження у WebUI X для полегшення налагодження. Потребує увімкненого веб-налагодження.</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">Застосований DPI</string>
     <string name="app_dpi_summary">Налаштувати щільність відображення екрана лише для поточного додатку</string>
@@ -293,8 +291,6 @@
     <string name="dpi_apply_settings">Застосування налаштувань DPI</string>
     <string name="dpi_confirm_title">Підтвердити зміну DPI</string>
     <string name="dpi_confirm_message">Ви впевнені, що хочете змінити DPI додатку з %1$d на %2$d?</string>
-    <string name="dpi_confirm_summary">Додаток потрібно перезапустити, щоб застосувати нові налаштування DPI; це не вплине на системний рядок стану або інші додатки</string>
-    <string name="dpi_applied_success">DPI встановлено на %1$d, набуде чинності після перезапуску додатку</string>
     <!-- Language settings related strings -->
     <string name="settings_language">Мова додатку</string>
     <string name="language_system_default">Як у системі</string>

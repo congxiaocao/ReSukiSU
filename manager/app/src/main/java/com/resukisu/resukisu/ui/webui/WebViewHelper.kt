@@ -18,8 +18,6 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewAssetLoader
-import com.dergoogler.mmrl.platform.model.ModId
-import com.dergoogler.mmrl.webui.interfaces.WXOptions
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ui.util.createRootShell
 import com.resukisu.resukisu.ui.viewmodel.ModuleViewModel
@@ -36,14 +34,10 @@ internal suspend fun prepareWebView(
     activity: Activity,
     moduleId: String,
     webUIState: WebUIState,
+    moduleViewModel: ModuleViewModel,
 ) {
     withContext(Dispatchers.IO) {
-        val viewModel = ModuleViewModel()
-        if (viewModel.moduleList.isEmpty()) {
-            viewModel.fetchModuleList()
-        }
-
-        val moduleInfo = viewModel.moduleList.find { info -> info.id == moduleId }
+        val moduleInfo = moduleViewModel.moduleList.find { info -> info.id == moduleId }
 
         if (moduleInfo == null) {
             withContext(Dispatchers.Main) {
@@ -52,7 +46,7 @@ internal suspend fun prepareWebView(
             return@withContext
         }
 
-        if (!moduleInfo.hasWebUi || !moduleInfo.enabled || moduleInfo.update || moduleInfo.remove) {
+        if (!moduleInfo.hasWebUi || !moduleInfo.enabled || moduleInfo.remove) {
             withContext(Dispatchers.Main) {
                 webUIState.uiEvent = WebUIEvent.Error(activity.getString(R.string.module_unavailable, moduleInfo.name))
             }
@@ -163,12 +157,7 @@ internal suspend fun prepareWebView(
             }
 
             // JS Interface
-            (activity as WebUIActivity).webUIState = webUIState
-            val webviewInterface = WebViewInterface(
-                WXOptions(
-                    activity, webView,
-                    ModId(moduleId)
-                ))
+            val webviewInterface = WebViewInterface(webUIState)
             webUIState.webView = webView
             webView.addJavascriptInterface(webviewInterface, "ksu")
             webUIState.uiEvent = WebUIEvent.WebViewReady

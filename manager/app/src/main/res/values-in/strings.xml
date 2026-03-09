@@ -14,7 +14,7 @@
     <string name="selinux_status_disabled">Nonaktif</string>
     <string name="selinux_status_enforcing">Enforcing</string>
     <string name="selinux_status_permissive">Permisif</string>
-    <string name="selinux_status_unknown">Tidak diketahui</string>
+    <string name="unknown">Tidak diketahui</string>
     <string name="superuser">SuperUser</string>
     <string name="module_failed_to_enable">Gagal mengaktifkan modul: %s</string>
     <string name="module_failed_to_disable">Gagal menonaktifkan modul: %s</string>
@@ -282,8 +282,6 @@
     <string name="show_kpm_info">Tampilkan fungsi KPM</string>
     <string name="show_kpm_info_summary">Tampilkan fungsi informasi KPM dan menu KPM di bilah navigasi</string>
     <!-- Webui X settings -->
-    <string name="use_webuix_eruda">Suntik Eruda ke WebUI X</string>
-    <string name="use_webuix_eruda_summary">Suntikkan konsol debug ke dalam WebUI X untuk mempermudah proses debugging. Memerlukan pengaktifan web debugging.</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">Ubah DPI</string>
     <string name="app_dpi_summary">Pengaturan DPI hanya untuk aplikasi ini saja</string>
@@ -295,8 +293,6 @@
     <string name="dpi_apply_settings">Terapkan setelan DPI</string>
     <string name="dpi_confirm_title">Konfirmasi perubahan DPI</string>
     <string name="dpi_confirm_message">Apa kamu yakin ingin merubah DPI aplikasi dari %1$d ke %2$d?</string>
-    <string name="dpi_confirm_summary">Aplikasi membutuhkan restar untuk menerapkan opsi DPI ini, perubahan ini tidak mengganggu DPI sistem</string>
-    <string name="dpi_applied_success">DPI telah di rubah ke %1$d, efektif setelah aplikasi di restar</string>
     <!-- Language settings related strings -->
     <string name="settings_language">Bahasa Aplikasi</string>
     <string name="language_system_default">Mengikuti sistem</string>

@@ -14,7 +14,7 @@
     <string name="selinux_status_disabled">Désactivé</string>
     <string name="selinux_status_enforcing">Enforcing</string>
     <string name="selinux_status_permissive">Permissive</string>
-    <string name="selinux_status_unknown">Inconnu</string>
+    <string name="unknown">Inconnu</string>
     <string name="superuser">Super-utilisateur</string>
     <string name="module_failed_to_enable">Échec de l\'activation du module : %s</string>
     <string name="module_failed_to_disable">Échec de la désactivation du module : %s</string>
@@ -275,8 +275,6 @@
     <string name="show_kpm_info">Afficher la fonction KPM</string>
     <string name="show_kpm_info_summary">Masque les informations et fonctions KPM dans la barre d\'accueil et en bas</string>
     <!-- Webui X settings -->
-    <string name="use_webuix_eruda">Injecter Eruda dans WebUI X</string>
-    <string name="use_webuix_eruda_summary">Injectez une console de débogage dans WebUI X pour faciliter le débogage. Nécessite que le débogage soit activé.</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">DPI appliqué</string>
     <string name="app_dpi_summary">Ajuster la densité d\'affichage de l\'écran pour l\'application actuelle uniquement</string>
@@ -288,8 +286,6 @@
     <string name="dpi_apply_settings">Application des paramètres DPI</string>
     <string name="dpi_confirm_title">Confirmer le changement de DPI</string>
     <string name="dpi_confirm_message">Êtes-vous sûr de vouloir changer le DPI de l\'application de %1$d à %2$d?</string>
-    <string name="dpi_confirm_summary">L\'application doit être redémarrée pour appliquer les nouveaux paramètres de DPI, n\'affecte pas la barre d\'état du système ou d\'autres applications</string>
-    <string name="dpi_applied_success">Le DPI a été réglé sur %1$d, effectif après le redémarrage de l\'application</string>
     <!-- Language settings related strings -->
     <string name="settings_language">Langue de l\'application</string>
     <string name="language_system_default">Suivre le paramètre système</string>

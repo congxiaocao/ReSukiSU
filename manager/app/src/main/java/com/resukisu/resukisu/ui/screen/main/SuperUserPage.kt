@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -40,7 +39,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,15 +67,17 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBarScrollBehavior
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -103,18 +103,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
-import com.ramcosta.composedestinations.generated.destinations.AppProfileScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.resukisu.resukisu.Natives
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ksuApp
 import com.resukisu.resukisu.ui.component.FabMenuPresets
 import com.resukisu.resukisu.ui.component.SearchAppBar
 import com.resukisu.resukisu.ui.component.VerticalExpandableFab
-import com.resukisu.resukisu.ui.component.pinnedScrollBehavior
 import com.resukisu.resukisu.ui.component.settings.SettingsBaseWidget
+import com.resukisu.resukisu.ui.component.settings.splicedLazyColumnGroup
+import com.resukisu.resukisu.ui.navigation.LocalNavigator
+import com.resukisu.resukisu.ui.navigation.Route
 import com.resukisu.resukisu.ui.screen.LabelText
-import com.resukisu.resukisu.ui.theme.CardConfig
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
 import com.resukisu.resukisu.ui.util.module.ModuleModify
 import com.resukisu.resukisu.ui.viewmodel.AppCategory
@@ -137,13 +136,14 @@ data class BottomSheetMenuItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SuperUserPage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: HazeState?) {
+fun SuperUserPage(bottomPadding: Dp, hazeState: HazeState?) {
     val context = LocalContext.current
     val viewModel = viewModel<SuperUserViewModel>(
         viewModelStoreOwner = ksuApp
     )
     val scope = rememberCoroutineScope()
-    val scrollBehavior = pinnedScrollBehavior()
+    val topAppBarState = rememberTopAppBarState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
     val listState = rememberLazyListState()
     val snackBarHostState = LocalSnackbarHost.current
 
@@ -153,7 +153,7 @@ fun SuperUserPage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState
     val backupLauncher = ModuleModify.rememberAllowlistBackupLauncher(context, snackBarHostState)
     val restoreLauncher = ModuleModify.rememberAllowlistRestoreLauncher(context, snackBarHostState)
 
-    LaunchedEffect(navigator) {
+    LaunchedEffect(Unit) {
         viewModel.search = ""
     }
 
@@ -225,6 +225,7 @@ fun SuperUserPage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState
     Scaffold(
         topBar = {
             SearchAppBar(
+                title = stringResource(R.string.superuser),
                 searchText = viewModel.search,
                 onSearchTextChange = { viewModel.search = it },
                 dropdownContent = {
@@ -256,7 +257,6 @@ fun SuperUserPage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState
             filteredAndSortedAppGroups = filteredAndSortedAppGroups,
             listState = listState,
             scrollBehavior = scrollBehavior,
-            navigator = navigator,
             scope = scope,
             bottomPadding = bottomPadding,
             hazeState = hazeState
@@ -284,7 +284,7 @@ private fun SuperUserFab(
     bottomPadding: Dp
 ) {
     VerticalExpandableFab(
-        modifier = Modifier.padding(bottom = bottomPadding),
+        modifier = Modifier.padding(bottom = bottomPadding + 5.dp),
         menuItems = if (viewModel.showBatchActions && viewModel.selectedApps.isNotEmpty()) {
             FabMenuPresets.getBatchActionMenuItems(
                 onCancel = {
@@ -333,12 +333,12 @@ private fun SuperUserContent(
     viewModel: SuperUserViewModel,
     filteredAndSortedAppGroups: List<SuperUserViewModel.AppGroup>,
     listState: androidx.compose.foundation.lazy.LazyListState,
-    scrollBehavior: SearchBarScrollBehavior,
-    navigator: DestinationsNavigator,
+    scrollBehavior: TopAppBarScrollBehavior,
     scope: CoroutineScope,
     bottomPadding: Dp,
     hazeState: HazeState?
 ) {
+    val navigator = LocalNavigator.current
     val pullRefreshState = rememberPullToRefreshState()
 
     if (filteredAndSortedAppGroups.isEmpty()) {
@@ -401,10 +401,6 @@ private fun SuperUserContent(
             )
         },
     ) {
-        val sharedStiffness = Spring.StiffnessMediumLow
-        val cornerRadius = 16.dp
-        val connectionRadius = 4.dp
-
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -415,82 +411,51 @@ private fun SuperUserContent(
                     start = 0.dp,
                     top = 0.dp,
                     end = 0.dp,
-                    bottom = 85.dp
+                    bottom = 72.dp + 5.dp + 5.dp // FAB + bottom padding of FAB x2
                 )
             },
         ) {
             item {
-                Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding() + 5.dp))
+                Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
             }
-            itemsIndexed(
+            splicedLazyColumnGroup(
                 items = filteredAndSortedAppGroups,
                 key = { _, appGroup -> "${appGroup.uid}-${appGroup.mainApp.packageName}" },
                 contentType = { _, _ -> "AppGroupItem" }
-            ) { appGroupIndex, appGroup ->
-                val isFirst = appGroupIndex == 0
-                val isLast = appGroupIndex == filteredAndSortedAppGroups.size - 1
-
-                val targetTopRadius = if (isFirst) cornerRadius else connectionRadius
-                val targetBottomRadius = if (isLast) cornerRadius else connectionRadius
-
-                val animatedTopRadius by animateDpAsState(
-                    targetValue = targetTopRadius,
-                    animationSpec = spring(stiffness = sharedStiffness),
-                    label = "TopCornerRadius"
-                )
-                val animatedBottomRadius by animateDpAsState(
-                    targetValue = targetBottomRadius,
-                    animationSpec = spring(stiffness = sharedStiffness),
-                    label = "BottomCornerRadius"
-                )
-
-                Surface(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 2.dp),
-                    shape = RoundedCornerShape(
-                        topStart = animatedTopRadius,
-                        topEnd = animatedTopRadius,
-                        bottomStart = animatedBottomRadius,
-                        bottomEnd = animatedBottomRadius
-                    ),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(
-                        alpha = CardConfig.cardAlpha
-                    ),
-                ) {
-                    AppGroupItem(
-                        appGroup = appGroup,
-                        isSelected = appGroup.packageNames.any {
-                            viewModel.selectedApps.contains(
+            ) { _, appGroup ->
+                AppGroupItem(
+                    appGroup = appGroup,
+                    isSelected = appGroup.packageNames.any {
+                        viewModel.selectedApps.contains(
+                            it
+                        )
+                    },
+                    onToggleSelection = {
+                        appGroup.packageNames.forEach {
+                            viewModel.toggleAppSelection(
                                 it
                             )
-                        },
-                        onToggleSelection = {
-                            appGroup.packageNames.forEach {
-                                viewModel.toggleAppSelection(
-                                    it
-                                )
-                            }
-                        },
-                        onClick = {
-                            if (viewModel.showBatchActions) {
-                                appGroup.packageNames.forEach { viewModel.toggleAppSelection(it) }
-                            } else {
-                                navigator.navigate(AppProfileScreenDestination(appGroup))
-                            }
-                        },
-                        onLongClick = {
-                            if (!viewModel.showBatchActions) {
-                                viewModel.toggleBatchMode()
-                                appGroup.packageNames.forEach { viewModel.toggleAppSelection(it) }
-                            }
-                        },
-                        viewModel = viewModel
-                    )
-                }
+                        }
+                    },
+                    onClick = {
+                        if (viewModel.showBatchActions) {
+                            appGroup.packageNames.forEach { viewModel.toggleAppSelection(it) }
+                        } else {
+                            navigator.push(Route.AppProfile(appGroup))
+                        }
+                    },
+                    onLongClick = {
+                        if (!viewModel.showBatchActions) {
+                            viewModel.toggleBatchMode()
+                            appGroup.packageNames.forEach { viewModel.toggleAppSelection(it) }
+                        }
+                    },
+                    viewModel = viewModel
+                )
             }
+
             item {
-                Spacer(modifier = Modifier.height(bottomPadding))
+                Spacer(modifier = Modifier.height(bottomPadding + innerPadding.calculateBottomPadding()))
             }
         }
     }

@@ -15,6 +15,8 @@ import com.resukisu.resukisu.ui.util.HanziToPinyin
 import com.resukisu.resukisu.ui.util.getRootShell
 import com.resukisu.resukisu.ui.util.listModules
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -184,12 +186,19 @@ class ModuleViewModel : ViewModel() {
                             actionIconPath = obj.optString("actionIcon").takeIf { it.isNotBlank() },
                             webUiIconPath = obj.optString("webuiIcon").takeIf { it.isNotBlank() },
                             dirId = obj.optString("dir_id", obj.getString("id")),
-                            moduleUpdate = if (!moduleList.contains(moduleId + moduleVersionCode) || updateJson.isEmpty() || remove || update || !enabled)
-                                checkUpdate(updateJson, moduleVersionCode)
-                            else
-                                null
+                            moduleUpdate = null // we null moduleUpdate there, because checkUpdate may request network
                         )
                     }.toList()
+
+                modules = modules.map { module ->
+                    async(Dispatchers.IO) {
+                        module.copy(
+                            moduleUpdate = if (!moduleList.contains(module.id + module.versionCode) || module.updateJson.isEmpty() || module.remove || module.update || !module.enabled)
+                                checkUpdate(module.updateJson, module.versionCode)
+                            else null
+                        )
+                    }
+                }.awaitAll()
 
                 isNeedRefresh = false
             }.onFailure { e ->
@@ -260,32 +269,6 @@ class ModuleViewModel : ViewModel() {
 
         return ModuleUpdateInfo(zipUrl, version, changelog)
     }
-}
-
-fun ModuleViewModel.ModuleInfo.copy(
-    id: String = this.id,
-    name: String = this.name,
-    author: String = this.author,
-    version: String = this.version,
-    versionCode: Int = this.versionCode,
-    description: String = this.description,
-    enabled: Boolean = this.enabled,
-    update: Boolean = this.update,
-    remove: Boolean = this.remove,
-    updateJson: String = this.updateJson,
-    hasWebUi: Boolean = this.hasWebUi,
-    hasActionScript: Boolean = this.hasActionScript,
-    metamodule: Boolean = this.metamodule,
-    actionIconPath: String? = this.actionIconPath,
-    webUiIconPath: String? = this.webUiIconPath,
-    dirId: String = this.dirId,
-    moduleUpdate: ModuleViewModel.ModuleUpdateInfo? = this.moduleUpdate,
-): ModuleViewModel.ModuleInfo {
-    return ModuleViewModel.ModuleInfo(
-        id, name, author, version, versionCode, description,
-        enabled, update, remove, updateJson, hasWebUi, hasActionScript, metamodule,
-        actionIconPath, webUiIconPath, dirId, moduleUpdate
-    )
 }
 
 private fun JSONObject.getBooleanCompat(key: String, default: Boolean = false): Boolean {

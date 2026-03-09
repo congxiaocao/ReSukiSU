@@ -15,7 +15,7 @@
     <string name="selinux_status_disabled">被禁用</string>
     <string name="selinux_status_enforcing">强制执行</string>
     <string name="selinux_status_permissive">宽容模式</string>
-    <string name="selinux_status_unknown">未知</string>
+    <string name="unknown">未知</string>
     <string name="superuser">超级用户</string>
     <string name="module_failed_to_enable">无法启用模块：%s</string>
     <string name="module_failed_to_disable">无法禁用模块：%s</string>
@@ -36,6 +36,16 @@
     <string name="reboot_download">重启到 Download</string>
     <string name="reboot_edl">重启到 EDL</string>
     <string name="about">关于</string>
+    <string name="about_anime_character_sticker">有动漫人物图片表情包的图像版权为%1$s所有，图像中的知识产权由%2$s 所有。在使用这些文件之前，除了必须遵守 %3$s 以外，还需要遵守向前两者索要使用这些艺术内容的授权。</string>
+    <string name="get_source_code">查看源代码</string>
+    <string name="get_source_code_detail">在 GitHub 上查看源代码</string>
+    <string name="join_telegram_group">加入社区</string>
+    <string name="join_telegram_group_detail">加入我们的 Telegram 频道</string>
+    <string name="open_source_license">开放源代码许可</string>
+    <string name="open_source_license_settings_description">查看本应用所使用的第三方开源库及其许可证信息</string>
+    <string name="visit_home_page">访问主页</string>
+    <string name="license">许可证：%s</string>
+    <string name="no_license_text">许可证内容不可用。</string>
     <string name="module_uninstall_confirm">确定要卸载模块 %s 吗？</string>
     <string name="metamodule_uninstall_confirm">"您确定要卸载模块 %s 吗？此操作将影响所有模块，并且元模块提供的某些功能（如挂载）将不再工作。  "</string>
     <string name="module_uninstall_success">%s 已卸载</string>
@@ -307,14 +317,9 @@
     <string name="show_kpm_info_summary">在主页和底栏隐藏 KPM 相关功能和信息</string>
     <!-- WebUI settings -->
     <string name="no_such_module">模块 %s 不存在</string>
-    <string name="module_unavailable">模块 %s 被禁用，待更新或待卸载</string>
+    <string name="module_unavailable">模块 %s 被禁用或待卸载</string>
     <string name="module_webui_alert">来自模块 %s 的消息</string>
     <string name="select_default_webui_engine">默认 WebUI 引擎</string>
-    <string name="webui_engine_default">遵守默认设置</string>
-    <string name="use_webuix_eruda">将 Eruda 注入 WebUI X</string>
-    <string name="use_webuix_eruda_summary">在 WebUI X 中注入调试控制台，使调试更容易,需要启用 WebView 调试</string>
-    <string name="config_modules_webui">配置 WebUI 引擎</string>
-    <string name="config_modules_webui_description">为各模块单独设置 WebUI 引擎</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">应用 DPI</string>
     <string name="app_dpi_summary">仅调整当前应用的屏幕显示密度</string>
@@ -326,8 +331,7 @@
     <string name="dpi_apply_settings">应用 DPI 设置</string>
     <string name="dpi_confirm_title">确认更改 DPI</string>
     <string name="dpi_confirm_message">你确定要将应用 DPI 从 %1$d 更改为 %2$d 吗？</string>
-    <string name="dpi_confirm_summary">应用需要重启以应用新的 DPI 设置，不会影响系统状态栏或其他应用</string>
-    <string name="dpi_applied_success">DPI 已设置为 %1$d，重启应用后生效</string>
+    <string name="dpi_applied_success">DPI 已设置为 %1$d</string>
     <!-- Language settings related strings -->
     <string name="settings_language">应用语言</string>
     <string name="language_system_default">跟随系统</string>
@@ -695,23 +699,22 @@
     <string name="incompatible_kernel_msg">当前管理器与此内核不兼容！请将内核升级至版本 %2$d 或以上（当前 %1$d）</string>
     <string name="umount_path_manager">Umount 路径管理</string>
     <string name="umount_path_manager_summary">管理内核卸载路径</string>
-    <string name="umount_path_restart_notice">添加或删除路径后需要重启设备才能生效。系统会在下次启动时应用新的配置。</string>
+    <string name="changes_take_effect_immediately">所有修改将即时生效</string>
     <string name="no_any_umount_path">没有任何内核卸载路径</string>
     <string name="add_umount_path">添加 Umount 路径</string>
     <string name="mount_path">挂载路径</string>
     <string name="umount_flags">卸载标志</string>
     <string name="umount_flags_hint">0=正常卸载, 2=MNT_DETACH</string>
-    <string name="flags">标志</string>
+    <string name="persistent">持久</string>
+    <string name="temporary">临时</string>
     <string name="confirm_delete">确认删除</string>
     <string name="confirm_delete_umount_path">确定要删除路径 %s 吗？</string>
-    <string name="umount_path_added">路径已添加，重启后生效</string>
-    <string name="umount_path_removed">路径已删除，重启后生效</string>
+    <string name="umount_path_added">卸载路径已添加</string>
+    <string name="umount_path_removed">卸载路径已删除</string>
     <string name="operation_failed">操作失败</string>
     <string name="confirm_action">确认操作</string>
     <string name="confirm_clear_custom_paths">确定要清除所有自定义路径吗？（默认路径将保留）</string>
     <string name="custom_paths_cleared">自定义路径已清除</string>
-    <string name="clear_custom_paths">清除自定义</string>
-    <string name="apply_config">应用配置</string>
     <string name="config_applied">配置已应用到内核</string>
     <string name="group_contains_apps">包含 %1$d 个应用</string>
     <string name="meta_module_disabled">模块未挂载，因为元模块已禁用</string>

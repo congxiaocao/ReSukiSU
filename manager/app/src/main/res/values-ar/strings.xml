@@ -14,7 +14,7 @@
     <string name="selinux_status_disabled">معطل</string>
     <string name="selinux_status_enforcing">مفروض</string>
     <string name="selinux_status_permissive">متساهل</string>
-    <string name="selinux_status_unknown">مجهول</string>
+    <string name="unknown">مجهول</string>
     <string name="superuser">مستخدم خارق</string>
     <string name="module_failed_to_enable">لا يمكن تشغيل %s الوحدة</string>
     <string name="module_failed_to_disable">فشل تعطيل الإضافة : %s</string>
@@ -275,8 +275,6 @@
     <string name="show_kpm_info">عرض وظيفة KPM</string>
     <string name="show_kpm_info_summary">إخفاء معلومات KPM ووظيفتها في الشريط المنزلي والأسفل</string>
     <!-- Webui X settings -->
-    <string name="use_webuix_eruda">حقن Eruda في WebUI X</string>
-    <string name="use_webuix_eruda_summary">حقن وحدة التصحيح في WebUI X لجعل تصحيح الأخطاء أسهل. يتطلب تصحيح أخطاء الويب لتكون قيد التشغيل.</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">تم تطبيق DPI</string>
     <string name="app_dpi_summary">ضبط كثافة عرض الشاشة للتطبيق الحالي فقط</string>
@@ -288,8 +286,6 @@
     <string name="dpi_apply_settings">تطبيق إعدادات DPI</string>
     <string name="dpi_confirm_title">تأكيد تغيير إدارة شؤون الإعلام</string>
     <string name="dpi_confirm_message">هل أنت متأكد من أنك تريد تغيير تطبيق DPI من %1$d إلى %2$d؟</string>
-    <string name="dpi_confirm_summary">يحتاج التطبيق إلى إعادة تشغيل لتطبيق الإعدادات الجديدة لإدارة شؤون الإعلام، ولا يؤثر على شريط حالة النظام أو التطبيقات الأخرى</string>
-    <string name="dpi_applied_success">تم تعيين DPI إلى %1$d، فعلي بعد إعادة تشغيل التطبيق</string>
     <!-- Language settings related strings -->
     <string name="settings_language">لغة التطبيق</string>
     <string name="language_system_default">اتبع النظام</string>

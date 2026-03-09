@@ -14,7 +14,7 @@
     <string name="selinux_status_disabled">被禁用</string>
     <string name="selinux_status_enforcing">強制執行</string>
     <string name="selinux_status_permissive">寬容模式</string>
-    <string name="selinux_status_unknown">未知</string>
+    <string name="unknown">未知</string>
     <string name="superuser">超級用戶</string>
     <string name="module_failed_to_enable">無法啟用模組：%s</string>
     <string name="module_failed_to_disable">無法禁用模組：%s</string>
@@ -280,8 +280,6 @@
     <string name="show_kpm_info">隱藏 KPM 功能</string>
     <string name="show_kpm_info_summary">喺主頁同底欄隱藏 KPM 相關功能同信息</string>
     <!-- Webui X settings -->
-    <string name="use_webuix_eruda">將 Eruda 注入 WebUI X</string>
-    <string name="use_webuix_eruda_summary">喺 WebUI X 中注入調試控制台，使調試更容易,需要啟用 WebView 調試</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">應用 DPI</string>
     <string name="app_dpi_summary">僅調整當前應用嘅屏幕顯示密度</string>
@@ -293,8 +291,7 @@
     <string name="dpi_apply_settings">應用 DPI 配置</string>
     <string name="dpi_confirm_title">確認更改 DPI</string>
     <string name="dpi_confirm_message">您確定要將應用 DPI 從 %1$d 更改為 %2$d 嗎？</string>
-    <string name="dpi_confirm_summary">應用需要重新啟動以應用新嘅 DPI 配置，唔會影響系統狀態欄或其他應用</string>
-    <string name="dpi_applied_success">DPI 已設定為 %1$d，重新啟動應用後生效</string>
+    <string name="dpi_applied_success">DPI 已設定為 %1$d</string>
     <!-- Language settings related strings -->
     <string name="settings_language">應用語言</string>
     <string name="language_system_default">跟隨系統</string>

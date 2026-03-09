@@ -14,7 +14,7 @@
     <string name="selinux_status_disabled">अक्षम</string>
     <string name="selinux_status_enforcing">एनफोर्सिंग</string>
     <string name="selinux_status_permissive">परमिसिव</string>
-    <string name="selinux_status_unknown">अज्ञात</string>
+    <string name="unknown">अज्ञात</string>
     <string name="superuser">सुपरयुझर</string>
     <string name="module_failed_to_enable">मॉड्यूल सक्षम करण्यात अयशस्वी: %s</string>
     <string name="module_failed_to_disable">मॉड्यूल अक्षम करण्यात अयशस्वी: %s</string>
@@ -273,8 +273,6 @@
     <string name="show_kpm_info">Display KPM Function</string>
     <string name="show_kpm_info_summary">Display KPM information and Function in home and bottom bar (Need to reopen the app)</string>
     <!-- Webui X settings -->
-    <string name="use_webuix_eruda">Inject Eruda into WebUI X</string>
-    <string name="use_webuix_eruda_summary">Inject a debug console into WebUI X to make debugging easier. Requires web debugging to be on.</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">Applied DPI</string>
     <string name="app_dpi_summary">Adjust the screen display density for the current application only</string>
@@ -286,8 +284,6 @@
     <string name="dpi_apply_settings">Applying DPI settings</string>
     <string name="dpi_confirm_title">Confirm DPI change</string>
     <string name="dpi_confirm_message">Are you sure you want to change the application DPI from %1$d to %2$d?</string>
-    <string name="dpi_confirm_summary">Application needs to be restarted to apply the new DPI settings, does not affect the system status bar or other applications</string>
-    <string name="dpi_applied_success">DPI has been set to %1$d, effective after restarting the application</string>
     <!-- Language settings related strings -->
     <string name="settings_language">App Language</string>
     <string name="language_system_default">Follow System</string>

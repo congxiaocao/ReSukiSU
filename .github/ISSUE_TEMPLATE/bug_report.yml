@@ -7,6 +7,12 @@ body:
     attributes:
        label: Please check before submitting an issue
        options:
+          - label: I have read the documents, and haven't found anything relevant
+            required: true
+            
+          - label: I surely I'm using the latest CI manager which is from main branch
+            required: true
+          
           - label: I have searched the issues and haven't found anything relevant
             required: true
             

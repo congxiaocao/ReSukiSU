@@ -14,7 +14,7 @@
     <string name="selinux_status_disabled">Dinonaktifkan</string>
     <string name="selinux_status_enforcing">Ditegakkan</string>
     <string name="selinux_status_permissive">Permisi</string>
-    <string name="selinux_status_unknown">Tidak Diketahui</string>
+    <string name="unknown">Tidak Diketahui</string>
     <string name="superuser">Superuser</string>
     <string name="module_failed_to_enable">Gagal mengaktifkan modul: %s</string>
     <string name="module_failed_to_disable">Gagal menonaktifkan modul: %s</string>
@@ -281,8 +281,6 @@ Tanamkan: Secara permanen memasang ke sistem</string>
     <string name="show_kpm_info">Sembunyikan Fungsi KPM</string>
     <string name="show_kpm_info_summary">Menyembunyikan informasi dan fungsi KPM di layar utama dan panel bawah</string>
     <!-- Webui X settings -->
-    <string name="use_webuix_eruda">Sisipkan Eruda ke WebUI X</string>
-    <string name="use_webuix_eruda_summary">Sisipkan konsol debug ke WebUI X untuk memudahkan debugging. Memerlukan debugging web diaktifkan.</string>
     <!-- DPI setting related strings -->
     <string name="app_dpi_title">DPI yang Diterapkan</string>
     <string name="app_dpi_summary">Sesuaikan kepadatan layar hanya untuk aplikasi saat ini</string>
@@ -294,8 +292,7 @@ Tanamkan: Secara permanen memasang ke sistem</string>
     <string name="dpi_apply_settings">Menerapkan Pengaturan DPI</string>
     <string name="dpi_confirm_title">Konfirmasi Perubahan DPI</string>
     <string name="dpi_confirm_message">Apakah Anda yakin ingin mengubah DPI aplikasi dari %1$d menjadi %2$d?</string>
-    <string name="dpi_confirm_summary">Aplikasi perlu dijalankan ulang agar pengaturan DPI baru diterapkan; ini tidak akan mempengaruhi bilah status sistem atau aplikasi lainnya</string>
-    <string name="dpi_applied_success">DPI diatur ke %1$d, akan diterapkan setelah aplikasi dijalankan ulang</string>
+    <string name="dpi_applied_success">DPI diatur ke %1$d</string>
     <!-- Language settings related strings -->
     <string name="settings_language">Bahasa Aplikasi</string>
     <string name="language_system_default">Ikuti Sistem</string>

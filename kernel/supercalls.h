@@ -39,10 +39,17 @@ struct ksu_check_safemode_cmd {
     __u8 in_safe_mode; // Output: true if in safe mode, false otherwise
 };
 
+// deprecated
 struct ksu_get_allow_list_cmd {
     __u32 uids[128]; // Output: array of allowed/denied UIDs
     __u32 count; // Output: number of UIDs in array
     __u8 allow; // Input: true for allow list, false for deny list
+};
+
+struct ksu_new_get_allow_list_cmd {
+    __u16 count; // Input / Output: number of UIDs in array
+    __u16 total_count; // Output: total number of UIDs in requested list
+    __u32 uids[0]; // Output: array of allowed/denied UIDs
 };
 
 struct ksu_uid_granted_root_cmd {
@@ -98,7 +105,7 @@ struct ksu_nuke_ext4_sysfs_cmd {
     __aligned_u64 arg; // Input: mnt pointer
 };
 
-struct ksu_add_try_umount_cmd {
+struct ksu_manage_try_umount_cmd {
     __aligned_u64 arg; // char ptr, this is the mountpoint
     __u32 flags; // this is the flag we use for it
     __u8 mode; // denotes what to do with it 0:wipe_list 1:add_to_list 2:delete_entry
@@ -107,6 +114,11 @@ struct ksu_add_try_umount_cmd {
 #define KSU_UMOUNT_WIPE 0 // ignore everything and wipe list
 #define KSU_UMOUNT_ADD 1 // add entry (path + flags)
 #define KSU_UMOUNT_DEL 2 // delete entry, strcmp
+
+#define KSU_UMOUNT_GETSIZE_LEGACY 107 // get list size (legacy)
+#define KSU_UMOUNT_GETLIST_LEGACY 108 // get list (legacy)
+#define KSU_UMOUNT_GETSIZE_NEW 200 // get list size (new (with flags))
+#define KSU_UMOUNT_GETLIST_NEW 201 // get list (new (with flags))
 
 // Other command structures
 struct ksu_get_full_version_cmd {
@@ -147,8 +159,14 @@ struct ksu_get_managers_cmd {
 #define KSU_IOCTL_REPORT_EVENT _IOC(_IOC_WRITE, 'K', 3, 0)
 #define KSU_IOCTL_SET_SEPOLICY _IOC(_IOC_READ | _IOC_WRITE, 'K', 4, 0)
 #define KSU_IOCTL_CHECK_SAFEMODE _IOC(_IOC_READ, 'K', 5, 0)
+// deprecated
 #define KSU_IOCTL_GET_ALLOW_LIST _IOC(_IOC_READ | _IOC_WRITE, 'K', 6, 0)
+// deprecated
 #define KSU_IOCTL_GET_DENY_LIST _IOC(_IOC_READ | _IOC_WRITE, 'K', 7, 0)
+#define KSU_IOCTL_NEW_GET_ALLOW_LIST                                           \
+    _IOWR('K', 6, struct ksu_new_get_allow_list_cmd)
+#define KSU_IOCTL_NEW_GET_DENY_LIST                                            \
+    _IOWR('K', 7, struct ksu_new_get_allow_list_cmd)
 #define KSU_IOCTL_UID_GRANTED_ROOT _IOC(_IOC_READ | _IOC_WRITE, 'K', 8, 0)
 #define KSU_IOCTL_UID_SHOULD_UMOUNT _IOC(_IOC_READ | _IOC_WRITE, 'K', 9, 0)
 #define KSU_IOCTL_GET_MANAGER_APPID _IOC(_IOC_READ, 'K', 10, 0)
@@ -159,7 +177,7 @@ struct ksu_get_managers_cmd {
 #define KSU_IOCTL_GET_WRAPPER_FD _IOC(_IOC_WRITE, 'K', 15, 0)
 #define KSU_IOCTL_MANAGE_MARK _IOC(_IOC_READ | _IOC_WRITE, 'K', 16, 0)
 #define KSU_IOCTL_NUKE_EXT4_SYSFS _IOC(_IOC_WRITE, 'K', 17, 0)
-#define KSU_IOCTL_ADD_TRY_UMOUNT _IOC(_IOC_WRITE, 'K', 18, 0)
+#define KSU_IOCTL_MANAGE_TRY_UMOUNT _IOC(_IOC_WRITE, 'K', 18, 0)
 
 // Other IOCTL command definitions
 #define KSU_IOCTL_GET_FULL_VERSION _IOC(_IOC_READ, 'K', 100, 0)
