@@ -8,7 +8,7 @@ use std::{
 
 use android_bootimg::{
     cpio::{Cpio, CpioEntry},
-    parser::BootImage,
+    parser::{BootImage, RamdiskImage},
     patcher::BootImagePatchOption,
 };
 use anyhow::{Context, Result, anyhow, bail, ensure};
@@ -20,6 +20,7 @@ use crate::assets;
 #[cfg(target_os = "android")]
 mod android {
     use std::{
+        fmt::Write,
         fs::{File, OpenOptions},
         os::fd::AsRawFd,
         path::Path,
@@ -118,7 +119,15 @@ mod android {
         }
 
         let result = hasher.finalize();
-        Ok(format!("{result:x}"))
+
+        let hex = result
+            .iter()
+            .fold(String::with_capacity(result.len() * 2), |mut s, &b| {
+                write!(&mut s, "{b:02x}").unwrap();
+                s
+            });
+
+        Ok(hex)
     }
 
     pub(super) fn do_backup(cpio: &mut Cpio, image: &Path) -> Result<()> {
@@ -336,7 +345,33 @@ fn parse_kmi_from_boot(image: &PathBuf) -> Result<String> {
     }
 }
 
+/// For vendor boot, prefer the `init_boot` ramdisk entry over the one with empty name,
+/// matching the original magiskboot lookup order (init_boot.cpio before ramdisk.cpio).
+fn extract_ramdisk(ramdisk_image: &RamdiskImage) -> Result<(Cpio, Option<usize>)> {
+    if ramdisk_image.is_vendor_ramdisk() {
+        let (pos, target) = ramdisk_image
+            .iter_vendor_ramdisk()
+            .enumerate()
+            .find(|e| e.1.get_name_raw() == b"init_boot")
+            .or_else(|| {
+                ramdisk_image
+                    .iter_vendor_ramdisk()
+                    .enumerate()
+                    .find(|e| e.1.get_name_raw() == b"")
+            })
+            .ok_or_else(|| anyhow!("No suitable vendor ramdisk entry found"))?;
+        let mut buf = Vec::<u8>::new();
+        target.dump(&mut buf, false)?;
+        Ok((Cpio::load_from_data(&buf)?, Some(pos)))
+    } else {
+        let mut buf = Vec::<u8>::new();
+        ramdisk_image.dump(&mut buf, false)?;
+        Ok((Cpio::load_from_data(&buf)?, None))
+    }
+}
+
 #[derive(clap::Args, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct BootPatchArgs {
     /// boot image path, if not specified, will try to find the boot image automatically
     #[arg(short, long)]
@@ -351,7 +386,7 @@ pub struct BootPatchArgs {
     pub module: Option<PathBuf>,
 
     /// init to be replaced
-    #[arg(short, long, requires("module"))]
+    #[arg(short, long)]
     pub init: Option<PathBuf>,
 
     /// will use another slot when boot image is not specified
@@ -380,6 +415,22 @@ pub struct BootPatchArgs {
     /// File name of the output.
     #[arg(long, default_value = None)]
     pub out_name: Option<String>,
+
+    /// Always allow shell to get root permission
+    #[arg(long, default_value = "false")]
+    allow_shell: bool,
+
+    /// Force enable adbd and disable adbd auth
+    #[arg(long, default_value = "false")]
+    enable_adbd: bool,
+
+    /// Add more adb_debug prop
+    #[arg(long, required = false)]
+    adb_debug_prop: Option<String>,
+
+    /// Do not (re-)install kernelsu, only modify configs (allow_shell, etc.)
+    #[arg(long, default_value = "false")]
+    no_install: bool,
 }
 
 pub fn patch(args: BootPatchArgs) -> Result<()> {
@@ -392,10 +443,11 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
             out,
             kmi,
             out_name,
-            ..
-        } = args;
-        #[cfg(target_os = "android")]
-        let BootPatchArgs {
+            allow_shell,
+            enable_adbd,
+            adb_debug_prop,
+            no_install,
+            #[cfg(target_os = "android")]
             ota,
             flash,
             partition,
@@ -507,70 +559,93 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
 
             let kernelsu_ko = if let Some(kmod) = kmod {
                 Box::new(map_file(&kmod)?)
-            } else {
+            } else if !no_install {
                 // If kmod is not specified, extract from assets
                 println!("- KMI: {kmi}");
                 let name = format!("{kmi}_kernelsu.ko");
                 assets::get_asset(&name)?
+            } else {
+                bail!("");
             };
 
             let ksu_init = if let Some(init) = init {
                 Box::new(map_file(&init)?)
-            } else {
+            } else if !no_install {
                 assets::get_asset("ksuinit")?
+            } else {
+                bail!("");
             };
 
             let (mut cpio, vendor_ramdisk_idx) =
                 if let Some(ramdisk_image) = boot_image.get_blocks().get_ramdisk() {
-                    if ramdisk_image.is_vendor_ramdisk() {
-                        let (pos, target) = ramdisk_image
-                            .iter_vendor_ramdisk()
-                            .enumerate()
-                            .find(|entry| entry.1.get_name_raw() == b"")
-                            .or_else(|| {
-                                ramdisk_image
-                                    .iter_vendor_ramdisk()
-                                    .enumerate()
-                                    .find(|entry| entry.1.get_name_raw() == b"init_boot")
-                            })
-                            .ok_or_else(|| anyhow!("No suitable vendor ramdisk entry found"))?;
-
-                        let mut ramdisk = Vec::<u8>::new();
-                        target.dump(&mut ramdisk, false)?;
-                        (Cpio::load_from_data(ramdisk.as_slice())?, Some(pos))
-                    } else {
-                        let mut ramdisk = Vec::<u8>::new();
-                        ramdisk_image.dump(&mut ramdisk, false)?;
-                        (Cpio::load_from_data(ramdisk.as_slice())?, None)
-                    }
+                    extract_ramdisk(ramdisk_image)?
                 } else {
+                    println!("- No ramdisk, create by default");
                     (Cpio::new(), None)
                 };
 
-            let is_magisk_patched = cpio.is_magisk_patched();
-            ensure!(!is_magisk_patched, "Cannot work with Magisk patched image");
+            if !no_install {
+                let is_magisk_patched = cpio.is_magisk_patched();
+                ensure!(!is_magisk_patched, "Cannot work with Magisk patched image");
 
-            let is_kernelsu_patched = cpio.exists("kernelsu.ko");
+                let is_kernelsu_patched = cpio.exists("kernelsu.ko");
 
-            if !is_kernelsu_patched {
-                // kernelsu.ko is not exist, backup init if necessary
-                if cpio.exists("init") {
-                    cpio.mv("init", "init.real")?;
+                if !is_kernelsu_patched {
+                    // kernelsu.ko is not exist, backup init if necessary
+                    if cpio.exists("init") {
+                        cpio.mv("init", "init.real")?;
+                    }
+                }
+
+                let ksu_init = CpioEntry::regular(0o755, ksu_init);
+                let kernelsu_ko = CpioEntry::regular(0o755, kernelsu_ko);
+
+                cpio.add("init", ksu_init)?;
+                cpio.add("kernelsu.ko", kernelsu_ko)?;
+
+                #[cfg(target_os = "android")]
+                if !is_kernelsu_patched
+                    && flash
+                    && let Err(e) = do_backup(&mut cpio, boot_image_file.as_path())
+                {
+                    println!("- Backup stock image failed: {e:?}");
                 }
             }
+            if allow_shell {
+                println!("- Adding allow shell config");
+                cpio.add("ksu_allow_shell", CpioEntry::regular(0o644, Box::new([])))?;
+            } else if cpio.exists("ksu_allow_shell") {
+                println!("- Removing allow shell config");
+                cpio.rm("ksu_allow_shell", false);
+            }
 
-            let ksu_init = CpioEntry::regular(0o755, ksu_init);
-            let kernelsu_ko = CpioEntry::regular(0o755, kernelsu_ko);
+            if enable_adbd || adb_debug_prop.is_some() {
+                cpio.add("force_debuggable", CpioEntry::regular(0o644, Box::new([])))?;
 
-            cpio.add("init", ksu_init)?;
-            cpio.add("kernelsu.ko", kernelsu_ko)?;
+                let mut prop = String::new();
+                if enable_adbd {
+                    println!("- Adding props to enable adbd");
+                    prop.push_str("ro.debuggable=1\nro.force.debuggable=1\nro.adb.secure=0\n");
+                }
+                if let Some(props) = adb_debug_prop {
+                    println!("- Adding custom props");
+                    prop.push_str(&props);
+                }
 
-            #[cfg(target_os = "android")]
-            if !is_kernelsu_patched
-                && flash
-                && let Err(e) = do_backup(&mut cpio, boot_image_file.as_path())
-            {
-                println!("- Backup stock image failed: {e:?}");
+                cpio.add(
+                    "adb_debug.prop",
+                    CpioEntry::regular(0o644, Box::new(prop.clone().into_bytes())),
+                )?;
+            } else {
+                if cpio.exists("adb_debug.prop") {
+                    println!("- Removing /adb_debug.prop");
+                    cpio.rm("adb_debug.prop", false);
+                }
+
+                if cpio.exists("force_debuggable") {
+                    println!("- Removing /force_debuggable");
+                    cpio.rm("force_debuggable", false);
+                }
             }
 
             let mut new_cpio = Vec::<u8>::new();
@@ -729,27 +804,7 @@ pub fn restore(args: BootRestoreArgs) -> Result<()> {
 
         let (mut cpio, vendor_ramdisk_idx) =
             if let Some(ramdisk_image) = boot_image.get_blocks().get_ramdisk() {
-                if ramdisk_image.is_vendor_ramdisk() {
-                    let (pos, target) = ramdisk_image
-                        .iter_vendor_ramdisk()
-                        .enumerate()
-                        .find(|entry| entry.1.get_name_raw() == b"")
-                        .or_else(|| {
-                            ramdisk_image
-                                .iter_vendor_ramdisk()
-                                .enumerate()
-                                .find(|entry| entry.1.get_name_raw() == b"init_boot")
-                        })
-                        .ok_or_else(|| anyhow!("No suitable vendor ramdisk entry found"))?;
-
-                    let mut ramdisk = Vec::<u8>::new();
-                    target.dump(&mut ramdisk, false)?;
-                    (Cpio::load_from_data(ramdisk.as_slice())?, Some(pos))
-                } else {
-                    let mut ramdisk = Vec::<u8>::new();
-                    ramdisk_image.dump(&mut ramdisk, false)?;
-                    (Cpio::load_from_data(ramdisk.as_slice())?, None)
-                }
+                extract_ramdisk(ramdisk_image)?
             } else {
                 bail!("No compatible ramdisk found.")
             };

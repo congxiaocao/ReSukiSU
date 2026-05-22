@@ -33,6 +33,9 @@ val baseCFlags = listOf(
 )
 val baseCppFlags = baseCFlags + "-fno-rtti"
 
+val isReleaseTask =
+    project.gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+
 android {
     namespace = "com.resukisu.resukisu"
 
@@ -120,6 +123,9 @@ android {
         versionCode = managerVersionCode
         versionName = managerVersionName
 
+        val isPrBuild = project.findProperty("IS_PR_BUILD")?.toString()?.toBoolean() ?: false
+        buildConfigField("boolean", "IS_PR_BUILD", isPrBuild.toString())
+
         externalNativeBuild {
             cmake {
                 arguments += "-DANDROID_STL=none"
@@ -130,6 +136,15 @@ android {
 
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64", "armeabi-v7a")
+        }
+    }
+
+    splits {
+        abi {
+            isEnable = isReleaseTask
+            reset()
+            include("arm64-v8a", "x86_64", "armeabi-v7a")
+            isUniversalApk = true
         }
     }
 
@@ -186,7 +201,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
     implementation(libs.androidx.navigation3.runtime)
-    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.miuix.blur)
+    implementation(libs.miuix.navigation)
     implementation(libs.androidx.navigationevent) {
         exclude(group = "androidx.navigation", module = "navigationevent-compose")
     }
@@ -199,8 +215,6 @@ dependencies {
     implementation(libs.com.github.topjohnwu.libsu.io)
 
     implementation(libs.m3color)
-    implementation(libs.haze)
-    implementation(libs.haze.materials)
     implementation(libs.capsule)
 
     implementation(libs.dev.rikka.rikkax.parcelablelist)

@@ -30,7 +30,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -56,20 +55,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ui.component.ConfirmResult
+import com.resukisu.resukisu.ui.component.SwipeableSnackbarHost
 import com.resukisu.resukisu.ui.component.WarningCard
 import com.resukisu.resukisu.ui.component.rememberConfirmDialog
 import com.resukisu.resukisu.ui.component.settings.AppBackButton
 import com.resukisu.resukisu.ui.component.settings.SettingsBaseWidget
 import com.resukisu.resukisu.ui.component.settings.splicedLazyColumnGroup
 import com.resukisu.resukisu.ui.navigation.LocalNavigator
+import com.resukisu.resukisu.ui.theme.CardConfig
 import com.resukisu.resukisu.ui.theme.ThemeConfig
+import com.resukisu.resukisu.ui.theme.blurEffect
+import com.resukisu.resukisu.ui.theme.blurSource
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
 import com.resukisu.resukisu.ui.viewmodel.UmountManagerScreenViewModel
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,25 +85,6 @@ fun UmountManagerScreen() {
     var isLoading by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()
     var showAddDialog by remember { mutableStateOf(false) }
-    val hazeState = if (ThemeConfig.backgroundImageLoaded) rememberHazeState() else null
-
-    val hazeStyle = if (ThemeConfig.backgroundImageLoaded) HazeStyle(
-        backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(
-            alpha = 0.8f
-        ),
-        tint = HazeTint(Color.Transparent)
-    ) else null
-
-    val collapsedFraction = scrollBehavior.state.collapsedFraction
-    val modifier = if (ThemeConfig.backgroundImageLoaded && hazeStyle != null && hazeState != null) {
-        Modifier.hazeEffect(hazeState) {
-            style = hazeStyle
-            noiseFactor = 0f
-            blurRadius = 30.dp
-            alpha = collapsedFraction
-        }
-    }
-    else Modifier
 
     val confirmDelete = stringResource(R.string.confirm_delete)
 
@@ -118,7 +97,8 @@ fun UmountManagerScreen() {
     Scaffold(
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = modifier,
+                modifier = Modifier
+                    .blurEffect(),
                 title = { Text(stringResource(R.string.umount_path_manager)) },
                 navigationIcon = {
                     val navigator = LocalNavigator.current
@@ -132,11 +112,15 @@ fun UmountManagerScreen() {
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor =
-                        if (ThemeConfig.backgroundImageLoaded) Color.Transparent
-                        else MaterialTheme.colorScheme.surfaceContainer,
+                        if (ThemeConfig.isEnableBlur)
+                            Color.Transparent
+                        else
+                            MaterialTheme.colorScheme.surfaceContainer.copy(CardConfig.cardAlpha),
                     scrolledContainerColor =
-                        if (ThemeConfig.backgroundImageLoaded) Color.Transparent
-                        else MaterialTheme.colorScheme.surfaceContainer,
+                        if (ThemeConfig.isEnableBlur)
+                            Color.Transparent
+                        else
+                            MaterialTheme.colorScheme.surfaceContainer.copy(CardConfig.cardAlpha),
                 )
             )
         },
@@ -147,7 +131,7 @@ fun UmountManagerScreen() {
                 Icon(Icons.Filled.Add, contentDescription = null)
             }
         },
-        snackbarHost = { SnackbarHost(snackBarHost) },
+        snackbarHost = { SwipeableSnackbarHost(hostState = snackBarHost) },
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) { paddingValues ->
@@ -180,7 +164,7 @@ fun UmountManagerScreen() {
                 },
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(if (hazeState != null) Modifier.hazeSource(hazeState) else Modifier)
+                    .blurSource()
             ) {
                 LazyColumn(
                     modifier = Modifier
@@ -239,7 +223,6 @@ fun UmountManagerScreen() {
                                     LabelText(
                                         label = entry.flagName,
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 }
                             }

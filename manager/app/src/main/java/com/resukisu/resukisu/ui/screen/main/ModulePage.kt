@@ -63,6 +63,7 @@ import androidx.compose.material.icons.rounded.Photo
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -77,7 +78,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -133,6 +133,7 @@ import com.resukisu.resukisu.ksuApp
 import com.resukisu.resukisu.ui.component.ConfirmResult
 import com.resukisu.resukisu.ui.component.InstallConfirmationDialog
 import com.resukisu.resukisu.ui.component.SearchAppBar
+import com.resukisu.resukisu.ui.component.SwipeableSnackbarHost
 import com.resukisu.resukisu.ui.component.WarningCard
 import com.resukisu.resukisu.ui.component.ZipFileDetector.parseModuleInfo
 import com.resukisu.resukisu.ui.component.ZipFileInfo
@@ -147,11 +148,12 @@ import com.resukisu.resukisu.ui.navigation.LocalNavigator
 import com.resukisu.resukisu.ui.navigation.Route
 import com.resukisu.resukisu.ui.screen.FlashIt
 import com.resukisu.resukisu.ui.screen.LabelText
+import com.resukisu.resukisu.ui.theme.blurSource
 import com.resukisu.resukisu.ui.theme.getCardColors
 import com.resukisu.resukisu.ui.theme.getCardElevation
-import com.resukisu.resukisu.ui.util.DownloadListener
+import com.resukisu.resukisu.ui.util.LocalPermissionRequestInterface
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
-import com.resukisu.resukisu.ui.util.download
+import com.resukisu.resukisu.ui.util.downloader.download
 import com.resukisu.resukisu.ui.util.hasMagisk
 import com.resukisu.resukisu.ui.util.module.ModuleUtils
 import com.resukisu.resukisu.ui.util.module.Shortcut
@@ -162,8 +164,6 @@ import com.resukisu.resukisu.ui.util.uninstallModule
 import com.resukisu.resukisu.ui.viewmodel.ModuleViewModel
 import com.resukisu.resukisu.ui.webui.WebUIActivity
 import com.topjohnwu.superuser.io.SuFile
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -180,7 +180,7 @@ private enum class ShortcutType {
 @SuppressLint("ResourceType", "AutoboxingStateCreation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModulePage(bottomPadding: Dp, hazeState: HazeState?) {
+fun ModulePage(bottomPadding: Dp) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel<ModuleViewModel>(
@@ -286,9 +286,9 @@ fun ModulePage(bottomPadding: Dp, hazeState: HazeState?) {
 
     LaunchedEffect(Unit) {
         viewModel.search = ""
+        viewModel.sortEnabledFirst = prefs.getBoolean("module_sort_enabled_first", false)
+        viewModel.sortActionFirst = prefs.getBoolean("module_sort_action_first", false)
         if (viewModel.moduleList.isEmpty() || viewModel.isNeedRefresh) {
-            viewModel.sortEnabledFirst = prefs.getBoolean("module_sort_enabled_first", false)
-            viewModel.sortActionFirst = prefs.getBoolean("module_sort_action_first", false)
             viewModel.fetchModuleList()
         }
     }
@@ -330,7 +330,6 @@ fun ModulePage(bottomPadding: Dp, hazeState: HazeState?) {
                 },
                 scrollBehavior = scrollBehavior,
                 searchBarPlaceHolderText = stringResource(R.string.search_modules),
-                hazeState = hazeState
             )
         },
         floatingActionButton = {
@@ -362,7 +361,7 @@ fun ModulePage(bottomPadding: Dp, hazeState: HazeState?) {
             WindowInsetsSides.Top + WindowInsetsSides.Horizontal
         ),
         snackbarHost = {
-            SnackbarHost(
+            SwipeableSnackbarHost(
                 hostState = snackBarHost
             )
         }
@@ -425,9 +424,6 @@ fun ModulePage(bottomPadding: Dp, hazeState: HazeState?) {
                     viewModel = viewModel,
                     listState = listState,
                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-                    onInstallModule = {
-                        navigator.push(Route.Flash(FlashIt.FlashModule(it)))
-                    },
                     onUpdateModule = {
                         navigator.push(Route.Flash(FlashIt.FlashModuleUpdate(it)))
                     },
@@ -460,7 +456,6 @@ fun ModulePage(bottomPadding: Dp, hazeState: HazeState?) {
                     snackBarHost = snackBarHost,
                     bottomPadding = bottomPadding + innerPadding.calculateBottomPadding(),
                     topPadding = innerPadding.calculateTopPadding(),
-                    hazeState = hazeState
                 )
             }
         }
@@ -615,12 +610,7 @@ private fun getMetaModuleWarningText(
     context: Context
 ) : String? {
     if (!showMetamoduleWarning) return null
-
-    val hasSystemModule = viewModel.moduleList.any { module ->
-        SuFile.open("/data/adb/modules/${module.id}/system").exists()
-    }
-
-    if (!hasSystemModule) return null
+    if (!viewModel.hasModuleRequireMount) return null
 
     val metaProp = SuFile.open("/data/adb/metamodule/module.prop").exists()
     val metaRemoved = SuFile.open("/data/adb/metamodule/remove").exists()
@@ -651,6 +641,7 @@ private fun MetaModuleWarningCard(
         exit = fadeOut() + shrinkVertically()
     ) {
         WarningCard(
+            shape = CardDefaults.elevatedShape,
             message = text,
             onClose = {
                 showMetamoduleWarning = false
@@ -668,15 +659,14 @@ private fun ModuleList(
     listState: LazyListState,
     modifier: Modifier = Modifier,
     boxModifier: Modifier = Modifier,
-    onInstallModule: (Uri) -> Unit,
     onUpdateModule: (Uri) -> Unit,
     onClickModule: (id: String, name: String, hasWebUi: Boolean) -> Unit,
     context: Context,
     snackBarHost: SnackbarHostState,
     bottomPadding : Dp,
     topPadding : Dp,
-    hazeState : HazeState?
 ) {
+    val permissionRequestInterface = LocalPermissionRequestInterface.current
     val pullRefreshState = rememberPullToRefreshState()
     val failedEnable = stringResource(R.string.module_failed_to_enable)
     val failedDisable = stringResource(R.string.module_failed_to_disable)
@@ -694,7 +684,6 @@ private fun ModuleList(
     val downloadingText = stringResource(R.string.module_downloading)
     val startDownloadingText = stringResource(R.string.module_start_downloading)
     val fetchChangeLogFailed = stringResource(R.string.module_changelog_failed)
-    val downloadErrorText = stringResource(R.string.module_download_error)
 
     val loadingDialog = rememberLoadingDialog()
     val confirmDialog = rememberConfirmDialog()
@@ -845,9 +834,9 @@ private fun ModuleList(
         withContext(Dispatchers.IO) {
             download(
                 context,
+                permissionRequestInterface,
                 downloadUrl,
                 fileName,
-                downloading,
                 onDownloaded = { uri ->
                     onUpdateModule(uri)
                 },
@@ -856,11 +845,6 @@ private fun ModuleList(
                         Toast.makeText(context, downloading, Toast.LENGTH_SHORT).show()
                     }
                 },
-                onError = { errorMsg ->
-                    launch(Dispatchers.Main) {
-                        Toast.makeText(context, "$downloadErrorText: $errorMsg", Toast.LENGTH_LONG).show()
-                    }
-                }
             )
         }
     }
@@ -941,16 +925,14 @@ private fun ModuleList(
         }
     }
 
-    var pullToRefreshBoxModifier = boxModifier
-
-    pullToRefreshBoxModifier = if (hazeState != null) pullToRefreshBoxModifier.hazeSource(state = hazeState) else pullToRefreshBoxModifier
-
     PullToRefreshBox(
         state = pullRefreshState,
         onRefresh = {
             viewModel.fetchModuleList(true)
         },
-        modifier = pullToRefreshBoxModifier.fillMaxSize(),
+        modifier = boxModifier
+            .fillMaxSize()
+            .blurSource(),
         indicator = {
             PullToRefreshDefaults.LoadingIndicator(
                 modifier = Modifier
@@ -962,7 +944,11 @@ private fun ModuleList(
         },
         isRefreshing = viewModel.isRefreshing
     ) {
-        val metaModuleWarningText by produceState<String?>(initialValue = null, viewModel.moduleList) {
+        val metaModuleWarningText by produceState<String?>(
+            initialValue = null,
+            viewModel.hasModuleRequireMount,
+            showMetamoduleWarning
+        ) {
             value = withContext(Dispatchers.IO) {
                 getMetaModuleWarningText(viewModel, context)
             }
@@ -981,7 +967,7 @@ private fun ModuleList(
             },
         ) {
             item {
-                Spacer(modifier = Modifier.height(topPadding))
+                Spacer(modifier = Modifier.height(topPadding + 1.dp))
             }
 
             if (metaModuleWarningText != null) {
@@ -1060,8 +1046,6 @@ private fun ModuleList(
                 Spacer(modifier = Modifier.height(bottomPadding))
             }
         }
-
-        DownloadListener(context, onInstallModule)
     }
 
     if (showShortcutDialog.value) {
@@ -1453,19 +1437,16 @@ fun ModuleItem(
                     LabelText(
                         label = module.dirId,
                         containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                     if (module.metamodule) {
                         LabelText(
                             label = "META",
                             containerColor = MaterialTheme.colorScheme.tertiary,
-                            contentColor = MaterialTheme.colorScheme.onTertiary
                         )
                     }
                     LabelText(
                         label = sizeStr ?: "0 KB",
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }

@@ -21,6 +21,12 @@ mod android {
                 Asset::get(&file).ok_or_else(|| anyhow::anyhow!("asset not found: {file}"))?;
             ensure_binary(format!("{BINARY_DIR}{file}"), &asset.data, ignore_if_exist)?;
         }
+
+        // Create resetprop -> ksud symlink (resetprop is now built into ksud)
+        let resetprop_link = RESETPROP_PATH;
+        let _ = std::fs::remove_file(resetprop_link);
+        std::os::unix::fs::symlink("/data/adb/ksud", resetprop_link)?;
+
         Ok(())
     }
 }
@@ -58,4 +64,9 @@ pub fn list_supported_kmi() -> std::vec::Vec<std::string::String> {
 pub fn get_asset(name: &str) -> Result<Box<dyn AsRef<[u8]>>> {
     let asset = Asset::get(name).ok_or_else(|| anyhow::anyhow!("asset not found: {name}"))?;
     Ok(Box::new(asset.data))
+}
+
+pub fn get_asset_data(name: &str) -> Result<std::borrow::Cow<'static, [u8]>> {
+    let asset = Asset::get(name).ok_or_else(|| anyhow::anyhow!("asset not found: {name}"))?;
+    Ok(asset.data)
 }

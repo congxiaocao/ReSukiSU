@@ -31,6 +31,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SignalWifiOff
 import androidx.compose.material.icons.outlined.Download
@@ -51,9 +53,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetState
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -63,6 +65,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -89,11 +92,13 @@ import androidx.core.content.edit
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.resukisu.resukisu.R
+import com.resukisu.resukisu.ui.activity.PermissionRequestInterface
 import com.resukisu.resukisu.ui.activity.util.isNetworkAvailable
 import com.resukisu.resukisu.ui.component.ConfirmDialogHandle
 import com.resukisu.resukisu.ui.component.ConfirmResult
 import com.resukisu.resukisu.ui.component.DialogHandle
 import com.resukisu.resukisu.ui.component.SearchAppBar
+import com.resukisu.resukisu.ui.component.SwipeableSnackbarHost
 import com.resukisu.resukisu.ui.component.rememberConfirmDialog
 import com.resukisu.resukisu.ui.component.rememberCustomDialog
 import com.resukisu.resukisu.ui.navigation.LocalNavigator
@@ -101,18 +106,17 @@ import com.resukisu.resukisu.ui.navigation.Navigator
 import com.resukisu.resukisu.ui.navigation.Route
 import com.resukisu.resukisu.ui.screen.FlashIt
 import com.resukisu.resukisu.ui.screen.LabelText
-import com.resukisu.resukisu.ui.theme.ThemeConfig
+import com.resukisu.resukisu.ui.theme.blurSource
 import com.resukisu.resukisu.ui.theme.getCardColors
 import com.resukisu.resukisu.ui.theme.getCardElevation
+import com.resukisu.resukisu.ui.util.LocalPermissionRequestInterface
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
-import com.resukisu.resukisu.ui.util.download
+import com.resukisu.resukisu.ui.util.downloader.download
 import com.resukisu.resukisu.ui.util.module.ReleaseAssetInfo
 import com.resukisu.resukisu.ui.util.module.ReleaseInfo
 import com.resukisu.resukisu.ui.viewmodel.ModuleRepoViewModel
 import com.resukisu.resukisu.ui.viewmodel.ModuleRepoViewModel.RepoModule
 import com.resukisu.resukisu.ui.viewmodel.formatFileSize
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -150,7 +154,6 @@ fun ModuleRepoScreen() {
         viewModel.sortStargazerCountFirst = prefs.getBoolean("module_repo_sort_star_first", false)
     }
 
-    val hazeState = if (ThemeConfig.backgroundImageLoaded) rememberHazeState() else null
     val isLoading = viewModel.modules.isEmpty()
 
     Scaffold(
@@ -177,7 +180,6 @@ fun ModuleRepoScreen() {
                 },
                 scrollBehavior = scrollBehavior,
                 searchBarPlaceHolderText = stringResource(R.string.search_modules),
-                hazeState = hazeState
             )
         },
         containerColor = Color.Transparent,
@@ -185,7 +187,7 @@ fun ModuleRepoScreen() {
         contentWindowInsets = WindowInsets.safeDrawing.only(
             WindowInsetsSides.Top + WindowInsetsSides.Horizontal
         ),
-        snackbarHost = { SnackbarHost(hostState = snackBarHost) }
+        snackbarHost = { SwipeableSnackbarHost(hostState = snackBarHost) }
     ) { innerPadding ->
         var offline by remember { mutableStateOf(!isNetworkAvailable(context)) }
 
@@ -243,7 +245,7 @@ fun ModuleRepoScreen() {
             }
         } else {
             PullToRefreshBox(
-                modifier = if (hazeState != null) Modifier.hazeSource(hazeState) else Modifier,
+                modifier = Modifier.blurSource(),
                 state = pullRefreshState,
                 isRefreshing = viewModel.isRefreshing,
                 onRefresh = {
@@ -380,6 +382,23 @@ private fun ModuleRepoBottomSheetContent(
                             bottomSheetState.hide()
                             onDismiss()
                         }
+                    },
+                    thumbContent = {
+                        if (viewModel.sortStargazerCountFirst) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                            )
+                        }
                     }
                 )
             }
@@ -396,6 +415,7 @@ fun OnlineModuleItem(
     currentModuleForChooseDialog: MutableState<RepoModule?>
 ) {
     val context = LocalContext.current
+    val permissionRequestInterface = LocalPermissionRequestInterface.current
     val navigator = LocalNavigator.current
 
     ElevatedCard(
@@ -495,20 +515,17 @@ fun OnlineModuleItem(
                 LabelText(
                     label = module.moduleId,
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
                 if (module.metamodule) {
                     LabelText(
                         label = "META",
                         containerColor = MaterialTheme.colorScheme.tertiary,
-                        contentColor = MaterialTheme.colorScheme.onTertiary
                     )
                 }
                 if (module.installed) {
                     LabelText(
                         label = stringResource(R.string.installed),
                         containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary
                     )
                 }
             }
@@ -556,6 +573,7 @@ fun OnlineModuleItem(
                                         assets.firstOrNull()?.let { asset ->
                                             downloadAssetAndInstall(
                                                 context,
+                                                permissionRequestInterface,
                                                 module,
                                                 asset,
                                                 navigator,
@@ -585,20 +603,20 @@ fun OnlineModuleItem(
 
 fun downloadAssetAndInstall(
     context: Context,
+    permissionRequestInterface: PermissionRequestInterface,
     module: RepoModule,
     asset: ReleaseAssetInfo,
     navigator: Navigator,
     coroutineScope: CoroutineScope
 ) {
     val downloadingText = context.getText(R.string.module_downloading).toString()
-    val downloadErrorText = context.getText(R.string.module_download_error).toString()
     coroutineScope.launch {
         withContext(Dispatchers.IO) {
             download(
-                context,
-                asset.downloadUrl,
-                asset.name,
-                downloadingText.format(module.moduleName),
+                context = context,
+                permissionRequestInterface = permissionRequestInterface,
+                url = asset.downloadUrl,
+                fileName = asset.name,
                 onDownloaded = { uri ->
                     navigator.push(
                         Route.Flash(
@@ -611,12 +629,6 @@ fun downloadAssetAndInstall(
                         Toast.makeText(context, downloadingText.format(module.moduleName), Toast.LENGTH_SHORT).show()
                     }
                 },
-                onError = { errorMsg ->
-                    launch(Dispatchers.Main) {
-                        Toast.makeText(context, "$downloadErrorText: $errorMsg", Toast.LENGTH_LONG)
-                            .show()
-                    }
-                }
             )
         }
     }
@@ -630,6 +642,7 @@ fun ChooseDialogContent(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val permissionRequestInterface = LocalPermissionRequestInterface.current
     val module = currentModuleForChooseDialog.value
     if (module == null || module.latestAsset == null) {
         dismiss()
@@ -712,7 +725,14 @@ fun ChooseDialogContent(
                             }
                             selectedAsset?.let { selected ->
                                 dismiss()
-                                downloadAssetAndInstall(context,module,selected, navigator, viewModel.viewModelScope)
+                                downloadAssetAndInstall(
+                                    context = context,
+                                    permissionRequestInterface = permissionRequestInterface,
+                                    module = module,
+                                    asset = selected,
+                                    navigator = navigator,
+                                    coroutineScope = viewModel.viewModelScope
+                                )
                             }
                         }
                     ) {
@@ -784,13 +804,32 @@ fun initFakeRepoModuleForPreview() : RepoModule {
 fun OnlineModuleItemPreview() {
     val currentModuleForChooseDialog = remember { mutableStateOf<RepoModule?>(null) }
 
-    OnlineModuleItem(
-        initFakeRepoModuleForPreview(),
-        viewModel<ModuleRepoViewModel>(),
-        rememberConfirmDialog(),
-        rememberCustomDialog { },
-        currentModuleForChooseDialog,
-    )
+    CompositionLocalProvider(
+        LocalNavigator provides Navigator(Route.ModuleRepo),
+        LocalPermissionRequestInterface provides object : PermissionRequestInterface {
+            override fun requestPermission(
+                permission: String,
+                callback: (Boolean) -> Unit,
+                requestDescription: String
+            ) {
+            }
+
+            override fun requestPermissions(
+                permissions: Array<String>,
+                callback: (Map<String, @JvmSuppressWildcards Boolean>) -> Unit,
+                requestDescription: Map<String, String>
+            ) {
+            }
+        }
+    ) {
+        OnlineModuleItem(
+            initFakeRepoModuleForPreview(),
+            viewModel<ModuleRepoViewModel>(),
+            rememberConfirmDialog(),
+            rememberCustomDialog { },
+            currentModuleForChooseDialog,
+        )
+    }
 }
 
 @Preview(locale = "zh-rCN", showBackground = true)
@@ -798,5 +837,24 @@ fun OnlineModuleItemPreview() {
 fun ChooseDialogPreview() {
     val currentModuleForChooseDialog = remember { mutableStateOf<RepoModule?>(initFakeRepoModuleForPreview()) }
 
-    ChooseDialogContent(currentModuleForChooseDialog, viewModel<ModuleRepoViewModel>()) {}
+    CompositionLocalProvider(
+        LocalNavigator provides Navigator(Route.ModuleRepo),
+        LocalPermissionRequestInterface provides object : PermissionRequestInterface {
+            override fun requestPermission(
+                permission: String,
+                callback: (Boolean) -> Unit,
+                requestDescription: String
+            ) {
+            }
+
+            override fun requestPermissions(
+                permissions: Array<String>,
+                callback: (Map<String, @JvmSuppressWildcards Boolean>) -> Unit,
+                requestDescription: Map<String, String>
+            ) {
+            }
+        }
+    ) {
+        ChooseDialogContent(currentModuleForChooseDialog, viewModel<ModuleRepoViewModel>()) {}
+    }
 }

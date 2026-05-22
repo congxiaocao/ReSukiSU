@@ -17,7 +17,7 @@ use anyhow::{Context, Result, anyhow, bail, ensure};
 use const_format::concatcp;
 use is_executable::is_executable;
 use java_properties::PropertiesIter;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use regex_lite::Regex;
 use zip_extensions::zip_extract::zip_extract_file_to_memory;
 
@@ -28,8 +28,8 @@ use crate::{
         restorecon::{restore_syscon, setsyscon},
         sepolicy,
         utils::{
-            ensure_clean_dir, ensure_dir_exists, ensure_file_exists, get_zip_uncompressed_size,
-            getprop, switch_cgroups,
+            detach_process_group, ensure_clean_dir, ensure_dir_exists, ensure_file_exists,
+            get_zip_uncompressed_size, getprop, switch_cgroups,
         },
     },
     assets, defs,
@@ -63,8 +63,8 @@ pub fn validate_module_id(module_id: &str) -> Result<()> {
 }
 
 /// Get common environment variables for script execution
-pub fn get_common_script_envs() -> Vec<(&'static str, String)> {
-    vec![
+pub fn get_common_script_envs(module_id: Option<&str>) -> Vec<(&'static str, String)> {
+    let mut envs = vec![
         ("ASH_STANDALONE", "1".to_string()),
         ("KSU", "true".to_string()),
         ("KSU_SUKISU", "true".to_string()),
@@ -79,10 +79,24 @@ pub fn get_common_script_envs() -> Vec<(&'static str, String)> {
                 defs::BINARY_DIR.trim_end_matches('/')
             ),
         ),
-    ]
+    ];
+
+    if let Some(id) = module_id {
+        if validate_module_id(id).is_ok() {
+            envs.push(("KSU_MODULE", id.to_string()));
+        } else {
+            error!("Invalid module_id provided: {id}");
+        }
+    }
+
+    if ksucalls::is_late_load() {
+        envs.push(("KSU_LATE_LOAD", "1".to_string()));
+    }
+
+    envs
 }
 
-fn exec_install_script(module_file: &str, is_metamodule: bool) -> Result<()> {
+fn exec_install_script(module_file: &str, is_metamodule: bool, module_id: &str) -> Result<()> {
     let realpath = std::fs::canonicalize(module_file)
         .with_context(|| format!("realpath: {module_file} failed"))?;
 
@@ -92,7 +106,7 @@ fn exec_install_script(module_file: &str, is_metamodule: bool) -> Result<()> {
 
     let result = Command::new(assets::BUSYBOX_PATH)
         .args(["sh", "-c", &install_script])
-        .envs(get_common_script_envs())
+        .envs(get_common_script_envs(Some(module_id)))
         .env("OUTFD", "1")
         .env("ZIPFILE", realpath)
         .status()?;
@@ -213,9 +227,9 @@ pub fn exec_script<T: AsRef<Path>>(path: T, wait: bool) -> Result<()> {
     let mut command = &mut Command::new(assets::BUSYBOX_PATH);
     #[cfg(unix)]
     {
-        command = command.process_group(0);
         command = unsafe {
             command.pre_exec(|| {
+                detach_process_group(true);
                 // ignore the error?
                 switch_cgroups();
                 Ok(())
@@ -226,12 +240,7 @@ pub fn exec_script<T: AsRef<Path>>(path: T, wait: bool) -> Result<()> {
         .current_dir(path.as_ref().parent().unwrap())
         .arg("sh")
         .arg(path.as_ref())
-        .envs(get_common_script_envs());
-
-    // Set KSU_MODULE environment variable if module_id was validated successfully
-    if let Some(id) = validated_module_id {
-        command = command.env("KSU_MODULE", id);
-    }
+        .envs(get_common_script_envs(validated_module_id));
 
     let result = if wait {
         command.status().map(|_| ())
@@ -246,9 +255,7 @@ pub fn exec_stage_script(stage: &str, block: bool) -> Result<()> {
 
     foreach_active_module(|module| {
         if metamodule_dir.as_ref().is_some_and(|meta_dir| {
-            canonicalize(module)
-                .map(|resolved| resolved == *meta_dir)
-                .unwrap_or(false)
+            canonicalize(module).is_ok_and(|resolved| resolved == *meta_dir)
         }) {
             return Ok(());
         }
@@ -294,13 +301,7 @@ pub fn load_system_prop() -> Result<()> {
         }
         info!("load {} system.prop", module.display());
 
-        // resetprop -n --file system.prop
-        Command::new(assets::RESETPROP_PATH)
-            .arg("-n")
-            .arg("--file")
-            .arg(&system_prop)
-            .status()
-            .with_context(|| format!("Failed to exec {}", system_prop.display()))?;
+        crate::android::resetprop::load_system_prop_file(&system_prop)?;
 
         Ok(())
     })?;
@@ -320,9 +321,8 @@ pub fn prune_modules() -> Result<()> {
         let module_id = module.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         // Check if this is a metamodule
-        let is_metamodule = read_module_prop(module)
-            .map(|props| metamodule::is_metamodule(&props))
-            .unwrap_or(false);
+        let is_metamodule =
+            read_module_prop(module).is_ok_and(|props| metamodule::is_metamodule(&props));
 
         if is_metamodule {
             info!("Removing metamodule symlink");
@@ -330,7 +330,7 @@ pub fn prune_modules() -> Result<()> {
                 warn!("Failed to remove metamodule symlink: {e}");
             }
         } else if let Err(e) = metamodule::exec_metauninstall_script(module_id) {
-            warn!("Failed to exec metamodule uninstall for {module_id}: {e}",);
+            warn!("Failed to exec metamodule uninstall for {module_id}: {e}");
         }
 
         // Then execute module's own uninstall.sh
@@ -442,18 +442,16 @@ fn install_module_to_system(zip: &str) -> Result<()> {
     let is_metamodule = metamodule::is_metamodule(&module_prop);
 
     // Check if it's safe to install regular module
-    if !is_metamodule && let Err(is_disabled) = metamodule::check_install_safety() {
+    if !is_metamodule
+        && let Err(is_disabled) = metamodule::check_install_safety()
+        && !is_disabled
+    {
         println!("\n❌ Installation Blocked");
         println!("┌────────────────────────────────");
         println!("│ A metamodule with custom installer is active");
         println!("│");
-        if is_disabled {
-            println!("│ Current state: Disabled");
-            println!("│ Action required: Re-enable or uninstall it, then reboot");
-        } else {
-            println!("│ Current state: Pending changes");
-            println!("│ Action required: Reboot to apply changes first");
-        }
+        println!("│ Current state: Pending changes");
+        println!("│ Action required: Reboot to apply changes first");
         println!("└─────────────────────────────────\n");
         bail!("Metamodule installation blocked");
     }
@@ -526,7 +524,7 @@ fn install_module_to_system(zip: &str) -> Result<()> {
 
     // Execute install script
     println!("- Running module installer");
-    exec_install_script(zip, is_metamodule)?;
+    exec_install_script(zip, is_metamodule, module_id)?;
 
     let module_dir = Path::new(MODULE_DIR).join(module_id);
     ensure_dir_exists(&module_dir)?;

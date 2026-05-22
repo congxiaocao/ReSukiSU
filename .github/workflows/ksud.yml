@@ -47,15 +47,16 @@ jobs:
     - name: Setup Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
+        toolchain: nightly
         targets: ${{ inputs.target }}
         components: rust-src
         
     - uses: Swatinem/rust-cache@v2
       if: github.event_name != 'pull_request'
       with:
-        prefix-key: ksud-${{ inputs.target }}-rust
+        prefix-key: ksud-${{ inputs.target }}
         workspaces: userspace/ksud
+        cache-targets: true
         
     - name: Setup cargo-ndk
       run: cargo install cargo-ndk --locked
@@ -63,7 +64,7 @@ jobs:
     - name: Build ksud
       run: |
         cd userspace/ksud/
-        cargo ndk b -t ${{ inputs.target }} -r
+        cargo ndk b -t ${{ inputs.target }} -r -Z build-std=std,core,panic_abort -Z build-std-features="optimize_for_size" -Z trim-paths
 
     - name: Upload ksud artifact
       uses: actions/upload-artifact@v7

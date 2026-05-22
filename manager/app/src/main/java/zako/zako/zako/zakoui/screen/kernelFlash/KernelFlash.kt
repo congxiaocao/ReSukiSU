@@ -39,7 +39,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -68,9 +67,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ui.component.KeyEventBlocker
+import com.resukisu.resukisu.ui.component.SwipeableSnackbarHost
 import com.resukisu.resukisu.ui.navigation.LocalNavigator
 import com.resukisu.resukisu.ui.theme.CardConfig
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
+import com.resukisu.resukisu.ui.util.install
 import com.resukisu.resukisu.ui.util.reboot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -148,6 +149,8 @@ fun KernelFlashScreen(
         showFloatAction = true
         KernelFlashStateHolder.isFlashing = false
 
+        install()
+
         // 如果需要自动退出，延迟1.5秒后退出
         if (shouldAutoExit) {
             scope.launch {
@@ -200,6 +203,8 @@ fun KernelFlashScreen(
             } else if (flashState.isCompleted) {
                 logText += "\n${horizonFlashComplete}\n\n\n"
                 showFloatAction = true
+
+                install()
             }
         }
     }
@@ -283,7 +288,7 @@ fun KernelFlashScreen(
                 )
             }
         },
-        snackbarHost = { SnackbarHost(hostState = snackBarHost) },
+        snackbarHost = { SwipeableSnackbarHost(hostState = snackBarHost) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->

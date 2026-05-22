@@ -52,6 +52,8 @@ import com.resukisu.resukisu.ui.component.settings.AppBackButton
 import com.resukisu.resukisu.ui.component.settings.SettingsTextFieldWidget
 import com.resukisu.resukisu.ui.component.settings.SplicedColumnGroup
 import com.resukisu.resukisu.ui.navigation.LocalNavigator
+import com.resukisu.resukisu.ui.theme.blurEffect
+import com.resukisu.resukisu.ui.theme.blurSource
 import com.resukisu.resukisu.ui.util.deleteAppProfileTemplate
 import com.resukisu.resukisu.ui.util.getAppProfileTemplate
 import com.resukisu.resukisu.ui.util.setAppProfileTemplate
@@ -136,6 +138,7 @@ fun TemplateEditorScreen(
                     // disable click and ripple if readOnly
                     readOnly
                 }
+                .blurSource()
         ) {
             SplicedColumnGroup {
                 if (isCreation) {
@@ -270,9 +273,11 @@ private fun TopBar(
     onBack: () -> Unit,
     onDelete: () -> Unit = {},
     onSave: () -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null
+    scrollBehavior: TopAppBarScrollBehavior
 ) {
     LargeFlexibleTopAppBar(
+        modifier = Modifier.blurEffect(
+        ),
         title = {
             Text(
                 text = title
